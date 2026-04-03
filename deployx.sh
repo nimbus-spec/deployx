@@ -1,37 +1,42 @@
 #!/bin/bash
 # DeployX - One-Click VPS Deployment
-# Usage: curl -fsSL https://raw.githubusercontent.com/nimbus-spec/deployx/main/deployx.sh | bash
+# Usage: 
+#   curl -fsSL https://raw.githubusercontent.com/nimbus-spec/deployx/main/deployx.sh -o deployx.sh
+#   chmod +x deployx.sh
+#   ./deployx.sh
 
-# Force UTF-8 encoding to prevent garbled Chinese characters
+# Force UTF-8 encoding
 export LC_ALL=C.UTF-8
 export LANG=C.UTF-8
 
 set -e
 
 REPO_URL="https://raw.githubusercontent.com/nimbus-spec/deployx/main"
-SUPPORTED_ARCH="x86_64 aarch64 armv7l"
 
-check_encoding() {
-    if [ -z "$LC_ALL" ] || [ "$LC_ALL" != "C.UTF-8" ]; then
-        export LC_ALL=C.UTF-8
-        export LANG=C.UTF-8
+fix_crlf() {
+    local file="$1"
+    if [ -f "$file" ]; then
+        sed -i 's/\r$//' "$file" 2>/dev/null || {
+            tr -d '\r' < "$file" > "${file}.tmp" && mv "${file}.tmp" "$file"
+        }
     fi
-    
+}
+
+fix_encoding() {
     if ! locale -a 2>/dev/null | grep -qi "utf8\|utf-8"; then
         if command -v apt-get &>/dev/null; then
             apt-get update -qq 2>/dev/null
             apt-get install -y -qq locales 2>/dev/null
             locale-gen en_US.UTF-8 2>/dev/null || true
             locale-gen zh_CN.UTF-8 2>/dev/null || true
-            export LC_ALL=C.UTF-8
-            export LANG=C.UTF-8
         fi
     fi
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
 }
 
 check_deps() {
     local missing=()
-    
     for cmd in bash curl wget openssl; do
         if ! command -v "$cmd" &>/dev/null; then
             missing+=("$cmd")
@@ -40,62 +45,28 @@ check_deps() {
     
     if [ ${#missing[@]} -gt 0 ]; then
         echo "[!] Missing dependencies: ${missing[*]}"
-        echo "[*] Installing missing packages..."
-        
+        echo "[*] Installing..."
         if command -v apt-get &>/dev/null; then
-            apt-get update -qq
-            apt-get install -y -qq "${missing[@]}" 2>/dev/null || {
-                echo "[!] Failed to install dependencies. Please install manually:"
-                echo "    apt-get install ${missing[*]}"
-                exit 1
-            }
+            apt-get update -qq && apt-get install -y -qq "${missing[@]}" 2>/dev/null
         elif command -v yum &>/dev/null; then
-            yum install -y -q "${missing[@]}" 2>/dev/null || {
-                echo "[!] Failed to install dependencies. Please install manually:"
-                echo "    yum install ${missing[*]}"
-                exit 1
-            }
+            yum install -y -q "${missing[@]}" 2>/dev/null
         elif command -v apk &>/dev/null; then
-            apk add "${missing[@]}" 2>/dev/null || {
-                echo "[!] Failed to install dependencies. Please install manually:"
-                echo "    apk add ${missing[*]}"
-                exit 1
-            }
-        else
-            echo "[!] Cannot auto-install. Please install: ${missing[*]}"
-            exit 1
+            apk add "${missing[@]}" 2>/dev/null
         fi
     fi
-    
     echo "[+] Dependencies OK"
 }
 
 check_arch() {
     local arch=$(uname -m)
-    local supported=0
-    
     case "$arch" in
-        x86_64|amd64)
-            echo "[*] Architecture: x86_64 (64-bit) - Supported"
-            supported=1
-            ;;
-        aarch64|arm64)
-            echo "[*] Architecture: aarch64 (ARM 64-bit) - Supported"
-            supported=1
-            ;;
-        armv7l|armhf)
-            echo "[*] Architecture: armv7l (ARM 32-bit) - Supported"
-            supported=1
+        x86_64|amd64|aarch64|arm64|armv7l|armhf)
+            echo "[*] Architecture: $arch - Supported"
             ;;
         *)
-            echo "[!] Architecture: $arch - Not tested"
+            echo "[!] Architecture: $arch - Untested"
             ;;
     esac
-    
-    if [ $supported -eq 0 ]; then
-        echo "[!] This architecture may not be fully supported by reinstall script"
-        echo "[*] Proceeding anyway..."
-    fi
 }
 
 download_file() {
@@ -107,7 +78,6 @@ download_file() {
     
     if command -v curl &>/dev/null; then
         curl -fsSL "$REPO_URL/$path" -o "$dest" || {
-            echo "[!] Failed to download $name from curl, trying wget..."
             wget -q "$REPO_URL/$path" -O "$dest" || {
                 echo "[!] Failed to download $name"
                 return 1
@@ -120,8 +90,8 @@ download_file() {
         }
     fi
     
+    fix_crlf "$dest"
     echo "[+] Downloaded $name"
-    return 0
 }
 
 main() {
@@ -145,10 +115,7 @@ main() {
     echo "[*] Working directory: $tmp_dir"
     echo ""
     
-    local dirs=("lib" "bin" "templates" "config" "translations")
-    for dir in "${dirs[@]}"; do
-        mkdir -p "$dir"
-    done
+    mkdir -p lib bin templates config translations
     
     echo "[*] Downloading DeployX..."
     echo ""
@@ -157,7 +124,7 @@ main() {
     download_file "generate.sh" "generate.sh" "main script"
     
     echo ""
-    echo "[*] Downloading library files..."
+    echo "[*] Downloading libraries..."
     download_file "lib/output.sh" "lib/output.sh" "output library"
     download_file "lib/detect.sh" "lib/detect.sh" "detect library"
     download_file "lib/network.sh" "lib/network.sh" "network library"
@@ -183,8 +150,7 @@ main() {
     download_file "translations/en.sh" "translations/en.sh" "English translations"
     download_file "translations/zh.sh" "translations/zh.sh" "Chinese translations"
     
-    chmod +x generate.sh
-    chmod +x deployx.sh
+    chmod +x generate.sh deployx.sh
     chmod +x bin/*.sh
     
     echo ""
@@ -199,12 +165,6 @@ main() {
     export LANG=C.UTF-8
     
     bash generate.sh "$@"
-    local exit_code=$?
-    
-    echo ""
-    echo "[*] Done. Exit code: $exit_code"
-    
-    exit $exit_code
 }
 
 main "$@"
