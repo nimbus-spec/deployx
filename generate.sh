@@ -385,9 +385,6 @@ show_summary() {
     echo "  Country:    ${COUNTRY^^}"
     echo "  Provider:   $MERCHANT"
     echo "  Network:    $NET_TYPE"
-    if [[ -n "$PUBLIC_V4" ]]; then
-    echo "  Public IP:  ${PUBLIC_V4%%/*}"
-    fi
     if [[ "$TAILSCALE_ENABLE" == "yes" ]]; then
     echo "  Tailscale:  enabled"
     fi
