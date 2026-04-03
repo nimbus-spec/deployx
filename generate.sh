@@ -16,6 +16,9 @@ source "$SCRIPT_DIR/lib/i18n.sh"
 i18n_init
 
 # OS options
+# Ordered OS list (indexed array for consistent order)
+OS_KEYS=(debian ubuntu alpine rocky almalinux fedora dd)
+
 declare -A OS_OPTIONS=(
     ["debian"]="Debian"
     ["ubuntu"]="Ubuntu"
@@ -59,18 +62,17 @@ select_os() {
     echo ""
     echo "$(_ SECTION_OS_SELECTION)"
     echo ""
-    local i=1 keys=()
-    for key in "${!OS_OPTIONS[@]}"; do
+    local i=1
+    for key in "${OS_KEYS[@]}"; do
         echo "  $i) ${OS_OPTIONS[$key]}"
-        keys+=("$key")
         ((i++))
     done
     echo ""
     read -p "$(_ PROMPT_OS_SELECTION)" choice
     choice="${choice:-1}"
     local idx=$((choice - 1))
-    if [[ $idx -ge 0 ]] && [[ $idx -lt ${#keys[@]} ]]; then
-        SELECTED_OS="${keys[$idx]}"
+    if [[ $idx -ge 0 ]] && [[ $idx -lt ${#OS_KEYS[@]} ]]; then
+        SELECTED_OS="${OS_KEYS[$idx]}"
     else
         SELECTED_OS="debian"
     fi
