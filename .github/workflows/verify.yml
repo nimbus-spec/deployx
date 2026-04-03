@@ -34,12 +34,15 @@ jobs:
           echo "=== Checking bash syntax ==="
           FAILED=0
           for f in $(find . -name "*.sh" -type f); do
-            if ! bash -n "$f" 2>&1; then
-              echo "SYNTAX ERROR: $f"
+            echo "Checking: $f"
+            bash -n "$f" 2>&1 || {
+              echo "SYNTAX ERROR in $f:"
+              bash -n "$f" 2>&1
               FAILED=1
-            fi
+            }
           done
           if [ $FAILED -eq 1 ]; then
+            echo "Syntax check failed!"
             exit 1
           fi
           echo "All bash scripts have valid syntax"
