@@ -96,7 +96,7 @@ main() {
     info "$(_ INFO_PUB_IPV4): ${PUBLIC_V4:-$(_ STATUS_NONE)}"
     info "$(_ INFO_PRIV_IPV4): ${PRIVATE_V4:-$(_ STATUS_NONE)}"
     
-    local region_code="${REGION_CODES[$REGION]:-${REGION:0:3}}"
+    local region_code="${REGION_CODES[$REGION]:-$(echo "$REGION" | cut -c1-3)}"
     region_code=$(echo "$region_code" | tr '[:upper:]' '[:lower:]')
     COUNTRY=$(echo "$COUNTRY" | tr '[:upper:]' '[:lower:]')
     local rand8=$(head /dev/urandom 2>/dev/null | tr -dc 'a-z0-9' | head -c 8)
