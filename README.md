@@ -17,10 +17,24 @@ Modular VPS deployment tool based on Unix philosophy.
 
 ## Quick Start
 
+### Option 1: Clone and Run
+
 ```bash
 git clone https://github.com/nimbus-spec/deployx.git
 cd deployx
 ./generate.sh
+```
+
+### Option 2: One-Line Install (Recommended)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/nimbus-spec/deployx/main/deployx.sh | bash
+```
+
+Or with wget:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/nimbus-spec/deployx/main/deployx.sh | bash
 ```
 
 ## Supported Operating Systems
@@ -54,7 +68,7 @@ Uses the reinstall script to dump a raw disk image directly. Recommended for:
 
 ## Usage
 
-1. Run `./generate.sh`
+1. Run `curl -fsSL ... | bash` or `./generate.sh`
 2. Select language (English/ä¸­æ–‡)
 3. Select operating system
 4. Choose installation mode (Native/DD)
@@ -97,6 +111,7 @@ deployx/
 â”‚   â”œâ”€â”€ en.sh              # English
 â”‚   â””â”€â”€ zh.sh              # Chinese
 â”œâ”€â”€ generate.sh            # Main entry
+â”œâ”€â”€ deployx.sh             # One-line installer
 â””â”€â”€ README.md
 ```
 
@@ -174,7 +189,7 @@ Example: `jp-tyo-v4-conoha-a1b2c3d4`
 - Linux (bash)
 - cloud-init
 - openssl
-- curl
+- curl or wget
 - ip (iproute2)
 
 ### Optional
