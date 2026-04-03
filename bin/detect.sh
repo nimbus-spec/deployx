@@ -1,40 +1,32 @@
 #!/bin/bash
 # bin/detect.sh - Hardware detection
+# Usage: source <(./bin/detect.sh) or ./bin/detect.sh
+# Output: CPU_CORES, MEMORY_MB, DISK_GB
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-
-source "$PROJECT_DIR/lib/output.sh"
 
 detect_cpu_cores() {
-    nproc 2>/dev/null || grep -c ^processor /proc/cpuinfo || echo "1"
+    nproc 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null || echo "1"
 }
 
 detect_memory_mb() {
-    free -m 2>/dev/null | awk '/^Mem:/{print int($2)}' || echo "1024"
+    local mem_kb=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}')
+    echo $((mem_kb / 1024))
 }
 
 detect_disk_gb() {
-    df -BG / 2>/dev/null | awk 'NR==2 {print int($2)}' | tr -d 'G' || echo "10"
+    local disk_kb=$(df -k / 2>/dev/null | tail -1 | awk '{print $2}')
+    echo $((disk_kb / 1024 / 1024))
 }
 
-main() {
-    header "Hardware Detection"
-    
-    CPU=$(detect_cpu_cores)
-    MEM=$(detect_memory_mb)
-    DISK=$(detect_disk_gb)
-    
-    info "CPU cores: $CPU"
-    info "Memory: ${MEM}MB"
-    info "Disk: ${DISK}GB"
-    
-    echo ""
-    echo "CPU_CORES=$CPU"
-    echo "MEMORY_MB=$MEM"
-    echo "DISK_GB=$DISK"
-}
-
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    echo "CPU_CORES=$(detect_cpu_cores)"
+    echo "MEMORY_MB=$(detect_memory_mb)"
+    echo "DISK_GB=$(detect_disk_gb)"
+else
+    CPU_CORES=$(detect_cpu_cores)
+    MEMORY_MB=$(detect_memory_mb)
+    DISK_GB=$(detect_disk_gb)
+fi
