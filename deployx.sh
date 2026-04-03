@@ -22,7 +22,7 @@ fix_crlf() {
     fi
 }
 
-fix_encoding() {
+check_encoding() {
     if ! locale -a 2>/dev/null | grep -qi "utf8\|utf-8"; then
         if command -v apt-get &>/dev/null; then
             apt-get update -qq 2>/dev/null
