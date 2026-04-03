@@ -4,6 +4,8 @@ Modular VPS deployment tool based on Unix philosophy.
 
 ## Features
 
+- **OS Selection**: Choose from multiple Linux distributions
+- **Custom DD Image**: Support for custom disk images
 - Hardware detection
 - Network detection (IPv4/IPv6/Dual-Stack/NAT)
 - Hostname generation: `{country}-{region}-{network_type}-{merchant}-{random8}`
@@ -21,44 +23,82 @@ cd deployx
 ./generate.sh
 ```
 
-## Project Structure
+## Supported Operating Systems
 
-```
-deployx/
-├── bin/                    # Executable scripts
-│   ├── detect.sh          # Hardware detection
-│   ├── hostname.sh        # Hostname generation
-│   └── network.sh         # Network detection
-├── lib/                   # Function libraries
-│   ├── output.sh          # Output functions
-│   ├── detect.sh          # Hardware detection lib
-│   ├── network.sh         # Network detection lib
-│   ├── i18n.sh            # Internationalization
-│   └── template.sh        # Template engine
-├── templates/             # Template files
-│   ├── user-data.tpl      # Cloud-init config
-│   └── meta-data.tpl
-├── config/
-│   └── region-codes.conf  # Region code mappings
-├── translations/          # i18n translations
-│   ├── en.sh              # English
-│   └── zh.sh              # Chinese
-├── generate.sh            # Main entry
-└── README.md
-```
+| OS | Versions | Install Mode |
+|----|----------|-------------|
+| Debian | 12, 13 | Native / DD |
+| Ubuntu | 20.04, 22.04, 24.04 | Native / DD |
+| Alpine | 3.20, 3.21, 3.22 | Native / DD |
+| CentOS Stream | 9, 10 | Native / DD |
+| Rocky Linux | 8, 9, 10 | Native / DD |
+| AlmaLinux | 8, 9, 10 | Native / DD |
+| Fedora | 42, 43 | Native / DD |
+| Custom DD Image | Any URL | DD only |
+
+## Installation Modes
+
+### Native Install
+
+Uses the reinstall script's native installation to install the selected OS directly from official mirrors. Recommended for:
+- Fresh installations
+- Systems requiring full disk encryption
+- Wanting latest OS versions automatically
+
+### DD (Disk Dump)
+
+Uses the reinstall script to dump a raw disk image directly. Recommended for:
+- Using custom/pre-configured images
+- Deploying Windows images
+- Preserving specific system configurations
 
 ## Usage
 
 1. Run `./generate.sh`
-2. Select language (English/中文)
-3. Enter configuration:
+2. Select language (English/ä¸­æ–‡)
+3. Select operating system
+4. Choose installation mode (Native/DD)
+5. If using DD, enter the custom image URL
+6. Enter configuration:
    - Merchant/provider name
    - Region (e.g., tokyo, singapore)
    - Country code
    - Nomad role (server/client)
    - SSH port and key
    - **Tailscale VPN** (optional)
-4. Confirm and start installation
+7. Confirm and start installation
+
+### Custom DD Image Example
+
+```
+Select OS: 9 (Custom DD Image)
+Custom DD image URL: https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.raw
+```
+
+## Project Structure
+
+```
+deployx/
+â”œâ”€â”€ bin/                    # Executable scripts
+â”‚   â”œâ”€â”€ detect.sh          # Hardware detection
+â”‚   â”œâ”€â”€ hostname.sh        # Hostname generation
+â”‚   â””â”€â”€ network.sh         # Network detection
+â”œâ”€â”€ lib/                   # Function libraries
+â”‚   â”œâ”€â”€ output.sh          # Output functions
+â”‚   â”œâ”€â”€ detect.sh          # Hardware detection lib
+â”‚   â”œâ”€â”€ network.sh         # Network detection lib
+â”‚   â””â”€â”€ i18n.sh            # Internationalization
+â”œâ”€â”€ templates/             # Template files
+â”‚   â”œâ”€â”€ user-data.tpl      # Cloud-init config
+â”‚   â””â”€â”€ meta-data.tpl
+â”œâ”€â”€ config/
+â”‚   â””â”€â”€ region-codes.conf  # Region code mappings
+â”œâ”€â”€ translations/          # i18n translations
+â”‚   â”œâ”€â”€ en.sh              # English
+â”‚   â””â”€â”€ zh.sh              # Chinese
+â”œâ”€â”€ generate.sh            # Main entry
+â””â”€â”€ README.md
+```
 
 ## Tailscale Integration
 
