@@ -42,9 +42,9 @@ OS_VERSIONS=(
 
 select_language() {
     echo ""
-    echo "Select language / Ã©â‚¬â€°Ã¦â€¹Â©Ã¨Â¯Â­Ã¨Â¨â‚¬:"
+    echo "Select language / é€‰æ‹©è¯­è¨€:
     echo "  1) English"
-    echo "  2) Ã¤Â¸Â­Ã¦â€“â€¡"
+    echo "  2) ä¸­æ–‡
     echo ""
     read -p "Choice [1]: " choice
     choice="${choice:-1}"
@@ -97,7 +97,7 @@ select_install_mode() {
     echo "$(_ SECTION_INSTALL_MODE)"
     echo ""
     echo "  1) $(_ INSTALL_MODE_NATIVE)"
-    echo "  2) $(_ INSTALL_MODE_DD)"
+    echo "  2) ä¸­æ–‡
     echo ""
     read -p "$(_ PROMPT_INSTALL_MODE)" choice
     choice="${choice:-1}"
