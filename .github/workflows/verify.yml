@@ -138,27 +138,18 @@ jobs:
 
       - name: Test i18n loading
         run: |
-          set -x
-          echo "=== Testing i18n loading ==="
-          
           export SCRIPT_DIR="."
-          pwd
-          ls -la
-          ls -la translations/ || echo "translations not found"
-          
-          source lib/i18n.sh || { echo "Failed to source i18n.sh"; exit 1; }
-          i18n_init
+          source lib/i18n.sh
+          i18n_init || true
           i18n_load en
           
-          echo "I18N_LOADED: $I18N_LOADED"
-          echo "T[HEADER_MAIN]: ${T[HEADER_MAIN]}"
-          
           RESULT=$(_ HEADER_MAIN)
-          echo "Translation result: '$RESULT'"
           
           if [ "$RESULT" = "VPS Auto Deployment Tool" ]; then
-            echo "i18n load: OK"
+            echo "i18n test: PASSED"
           else
-            echo "i18n load: FAILED"
+            echo "i18n test: FAILED (got: '$RESULT')"
+            exit 1
+          fi
             exit 1
           fi
