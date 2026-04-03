@@ -22,6 +22,21 @@ EOF
 ROLE=""
 HOSTNAME=""
 OUTPUT_DIR="/etc/nomad.d"
+RUNCMD_MODE="no"
+
+# Check for --runcmd first (before getopts)
+for arg in "$@"; do
+    if [[ "$arg" == "--runcmd" ]]; then
+        RUNCMD_MODE="yes"
+        break
+    fi
+done
+
+# Filter out --runcmd for getopts
+ARGS=()
+for arg in "$@"; do
+    [[ "$arg" != "--runcmd" ]] && ARGS+=("$arg")
+done
 
 while getopts "r:n:o:h" opt; do
     case $opt in
@@ -29,7 +44,7 @@ while getopts "r:n:o:h" opt; do
         n) HOSTNAME="$OPTARG" ;;
         o) OUTPUT_DIR="$OPTARG" ;;
         h) usage; exit 0 ;;
-        *) usage; exit 1 ;;
+        *) ;;
     esac
 done
 
@@ -134,4 +149,6 @@ output_nomad_config() {
     fi
 }
 
-output_nomad_config "$@"
+if [[ "$RUNCMD_MODE" == "yes" ]]; then
+    output_nomad_config --runcmd
+fi
