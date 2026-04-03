@@ -169,21 +169,23 @@ prompt_ssh_port() {
 prompt_nomad_role() {
     echo ""
     echo "--- $(t NOMAD_ROLE "Nomad role") ---"
-    echo "  1) Server"
-    echo "  2) Client"
-    echo "  3) Server + Client"
+    echo "  1) None"
+    echo "  2) Server"
+    echo "  3) Client"
+    echo "  4) Server + Client"
     echo ""
     
     local valid=0
     while [[ $valid -eq 0 ]]; do
-        echo -n "Select role [1]: "
+        echo -n "Select role [4]: "
         read -r choice
-        choice="${choice:-1}"
+        choice="${choice:-4}"
         
         case "$choice" in
-            1) NOMAD_ROLE="server"; valid=1 ;;
-            2) NOMAD_ROLE="client"; valid=1 ;;
-            3) NOMAD_ROLE="server+client"; valid=1 ;;
+            1) NOMAD_ROLE="none"; valid=1 ;;
+            2) NOMAD_ROLE="server"; valid=1 ;;
+            3) NOMAD_ROLE="client"; valid=1 ;;
+            4) NOMAD_ROLE="server+client"; valid=1 ;;
             *) echo "Invalid selection" ;;
         esac
     done
@@ -358,12 +360,8 @@ generate_runcmd() {
   - echo '    StrictHostKeyChecking no' >> /etc/ssh/sshd_config.d/disable.conf
   - systemctl restart sshd"
     
-    if [[ "$NOMAD_ROLE" == "server" ]] || [[ "$NOMAD_ROLE" == "server+client" ]]; then
-        runcmd="$runcmd"$'\n'"$("$BIN_DIR/nomad.sh" -r server -n "$HOSTNAME" --runcmd 2>/dev/null || true)"
-    fi
-    
-    if [[ "$NOMAD_ROLE" == "client" ]] || [[ "$NOMAD_ROLE" == "server+client" ]]; then
-        runcmd="$runcmd"$'\n'"$("$BIN_DIR/nomad.sh" -r client -n "$HOSTNAME" --runcmd 2>/dev/null || true)"
+    if [[ "$NOMAD_ROLE" != "none" ]]; then
+        runcmd="$runcmd"$'\n'"$("$BIN_DIR/nomad.sh" -r "$NOMAD_ROLE" -n "$HOSTNAME" --runcmd 2>/dev/null || true)"
     fi
     
     if [[ "$TAILSCALE_ENABLE" == "yes" ]] && [[ -n "$TAILSCALE_KEY" ]]; then
