@@ -209,12 +209,10 @@ NOMADCMD
         if [[ "$TAILSCALE_ACCEPT_ROUTES" =~ ^(yes|y)$ ]]; then
             accept_routes_flag="--accept-routes"
         fi
-        tailscale_runcmd=$(cat << 'TAILSCALECMD'
-  - |
+        tailscale_runcmd="  - |
     curl -fsSL https://tailscale.com/install.sh | sh
-    tailscale up --authkey=AUTHKEY_PLACEHOLDER $accept_routes_flag
-TAILSCALECMD
-        tailscale_runcmd="${tailscale_runcmd/AUTHKEY_PLACEHOLDER/$TAILSCALE_AUTH_KEY}"
+    tailscale up --authkey=${TAILSCALE_AUTH_KEY} ${accept_routes_flag}
+"
     fi
     
     local kernel_tuning=$(cat << 'KERNEL'
