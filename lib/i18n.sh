@@ -24,7 +24,7 @@ i18n_load() {
     fi
     
     unset T
-    declare -A T
+    declare -gA T
     
     source "$lang_file"
     I18N_CURRENT_LANG="$lang"
