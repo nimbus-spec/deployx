@@ -16,15 +16,40 @@ source "$SCRIPT_DIR/config/region-codes.conf"
 
 i18n_init
 
+detect_location() {
+    local ipapi_resp=$(curl -fsSL --max-time 5 "https://ipapi.co/json/" 2>/dev/null)
+    if [ -z "$ipapi_resp" ]; then
+        ipapi_resp=$(curl -fsSL --max-time 5 "http://ip-api.com/json/" 2>/dev/null)
+    fi
+    
+    if [ -n "$ipapi_resp" ]; then
+        DETECTED_COUNTRY=$(echo "$ipapi_resp" | grep -o '"country_code":"[^"]*"' | head -1 | cut -d'"' -f4)
+        DETECTED_CITY=$(echo "$ipapi_resp" | grep -o '"city":"[^"]*"' | head -1 | cut -d'"' -f4)
+        DETECTED_REGION=$(echo "$ipapi_resp" | grep -o '"region":"[^"]*"' | head -1 | cut -d'"' -f4)
+        
+        DETECTED_COUNTRY=${DETECTED_COUNTRY:-us}
+        DETECTED_CITY=${DETECTED_CITY:-unknown}
+        DETECTED_REGION=${DETECTED_REGION:-unknown}
+        
+        DETECTED_COUNTRY=$(echo "$DETECTED_COUNTRY" | tr '[:upper:]' '[:lower:]')
+        DETECTED_CITY=$(echo "$DETECTED_CITY" | tr '[:upper:]' '[:lower:]')
+        DETECTED_REGION=$(echo "$DETECTED_REGION" | tr '[:upper:]' '[:lower:]')
+    else
+        DETECTED_COUNTRY="us"
+        DETECTED_CITY="unknown"
+        DETECTED_REGION="unknown"
+    fi
+}
+
 declare -A OS_OPTIONS
 OS_OPTIONS=(
-    ["debian"]="Debian (12/13)"
-    ["ubuntu"]="Ubuntu (20.04/22.04/24.04)"
-    ["alpine"]="Alpine Linux (3.20/3.21)"
-    ["centos"]="CentOS Stream (9/10)"
-    ["rocky"]="Rocky Linux (8/9/10)"
-    ["almalinux"]="AlmaLinux (8/9/10)"
-    ["fedora"]="Fedora (42/43)"
+    ["debian"]="Debian"
+    ["ubuntu"]="Ubuntu"
+    ["alpine"]="Alpine"
+    ["centos"]="CentOS"
+    ["rocky"]="Rocky"
+    ["almalinux"]="AlmaLinux"
+    ["fedora"]="Fedora"
     ["dd"]="Custom DD Image"
 )
 
@@ -112,6 +137,23 @@ select_install_mode() {
     [[ "$choice" == "2" ]] && INSTALL_MODE="dd" || INSTALL_MODE="native"
 }
 
+select_nomad_role() {
+    echo ""
+    echo "Nomad Role:"
+    echo "  1) Server"
+    echo "  2) Client"
+    echo "  3) Server + Client (all-in-one)"
+    echo ""
+    read -p "Choice [3]: " choice
+    choice="${choice:-3}"
+    
+    case "$choice" in
+        1) NOMAD_ROLE="server" ;;
+        2) NOMAD_ROLE="client" ;;
+        *) NOMAD_ROLE="server+client" ;;
+    esac
+}
+
 get_os_label() {
     [[ "$SELECTED_OS" == "dd" ]] && _ "LABEL_CUSTOM_DD" || echo "${OS_OPTIONS[$SELECTED_OS]}"
 }
@@ -120,6 +162,9 @@ main() {
     select_language
     
     header "$(_ HEADER_MAIN)"
+    
+    info "$(_ INFO_NET_TYPE): Detecting..."
+    detect_location
     
     section "$(_ SECTION_OS_SELECTION)"
     select_os
@@ -138,15 +183,6 @@ main() {
     
     read -p "$(_ PROMPT_MERCHANT)" MERCHANT
     MERCHANT="${MERCHANT:-unknown}"
-    
-    read -p "$(_ PROMPT_REGION)" REGION
-    REGION="${REGION:-unknown}"
-    
-    read -p "$(_ PROMPT_COUNTRY)" COUNTRY
-    COUNTRY="${COUNTRY:-us}"
-    
-    read -p "$(_ PROMPT_NOMAD_ROLE)" NOMAD_ROLE
-    NOMAD_ROLE="${NOMAD_ROLE:-server}"
     
     read -p "$(_ PROMPT_SSH_PORT)" SSH_PORT
     SSH_PORT="${SSH_PORT:-22}"
@@ -168,6 +204,9 @@ main() {
         TAILSCALE_ACCEPT_ROUTES="no"
     fi
     
+    section "$(_ SECTION_NOMAD)"
+    select_nomad_role
+    
     header "$(_ SECTION_HARDWARE)"
     info "$(_ INFO_CPU): $(detect_cpu_cores)"
     info "$(_ INFO_MEMORY): $(detect_memory_mb)MB"
@@ -181,10 +220,11 @@ main() {
     info "$(_ INFO_NET_TYPE): $(get_net_type_label)"
     info "$(_ INFO_PUB_IPV4): ${PUBLIC_V4:-$(_ STATUS_NONE)}"
     info "$(_ INFO_PRIV_IPV4): ${PRIVATE_V4:-$(_ STATUS_NONE)}"
+    info "Location: ${DETECTED_COUNTRY} / ${DETECTED_CITY}"
     
-    local region_code="${REGION_CODES[$REGION]:-$(echo "$REGION" | cut -c1-3)}"
+    local region_code="${REGION_CODES[$DETECTED_CITY]:-${DETECTED_CITY:0:3}}"
     region_code=$(echo "$region_code" | tr '[:upper:]' '[:lower:]')
-    COUNTRY=$(echo "$COUNTRY" | tr '[:upper:]' '[:lower:]')
+    COUNTRY="$DETECTED_COUNTRY"
     local rand8=$(head /dev/urandom 2>/dev/null | tr -dc 'a-z0-9' | head -c 8)
     local HOSTNAME="${COUNTRY}-${region_code}-${NET_TYPE}-${MERCHANT}-${rand8}"
     
@@ -208,10 +248,9 @@ main() {
   $(_ LABEL_OS): $(get_os_label)
   $(_ LABEL_INSTALL_MODE): $(if [[ "$INSTALL_MODE" == "dd" ]]; then _ "INSTALL_MODE_DD"; else _ "INSTALL_MODE_NATIVE"; fi)
   $(_ LABEL_MERCHANT): $MERCHANT
-  $(_ LABEL_REGION): $REGION (${region_code})
   $(_ LABEL_COUNTRY): $COUNTRY
   $(_ LABEL_NET_TYPE): $(get_net_type_label)
-  $(_ LABEL_NOMAD_ROLE): $NOMAD_ROLE
+  Nomad Role: $NOMAD_ROLE
   $(_ LABEL_SSH_PORT): $SSH_PORT
   $(_ LABEL_TAILSCALE): $(if [[ "$TAILSCALE_ENABLED" =~ ^(yes|y)$ ]]; then _ "STATUS_ENABLED"; else _ "STATUS_DISABLED"; fi)
   
@@ -271,7 +310,8 @@ KERNEL
 )
         
         local nomad_runcmd=""
-        [[ "$NOMAD_ROLE" == "server" ]] && nomad_runcmd=$(cat << 'NOMADCMD'
+        if [[ "$NOMAD_ROLE" == "server" ]] || [[ "$NOMAD_ROLE" == "server+client" ]]; then
+            nomad_runcmd=$(cat << 'NOMADCMD'
   - |
     NOMAD_VERSION=$(curl -fsSL "https://api.github.com/repos/hashicorp/nomad/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/' || echo "1.7.6")
     curl -fsSL "https://releases.hashicorp.com/nomad/${NOMAD_VERSION}/nomad_${NOMAD_VERSION}_linux_amd64.zip" -o /tmp/nomad.zip
@@ -289,7 +329,6 @@ KERNEL
     bind_addr = "0.0.0.0"
     ports { http = 4646 rpc = 4647 serf = 4648 }
     server { enabled = true bootstrap_expect = 1 }
-    client { enabled = false }
     telemetry { prometheus_metrics = true }
     NOMADCFG
     sed -i "s/NOMAD_HOSTNAME/$HOSTNAME/g" /etc/nomad.d/server.hcl
@@ -306,6 +345,19 @@ KERNEL
     systemctl daemon-reload && systemctl enable nomad && systemctl start nomad
 NOMADCMD
         )
+        fi
+        
+        if [[ "$NOMAD_ROLE" == "client" ]] || [[ "$NOMAD_ROLE" == "server+client" ]]; then
+            nomad_runcmd="${nomad_runcmd}$(cat << 'NOMADCLT'
+  - |
+    cat >> /etc/nomad.d/server.hcl << 'NOMADCFG'
+    client { enabled = true }
+    consul { address = "127.0.0.1:8500" }
+    NOMADCFG
+    systemctl restart nomad
+NOMADCLT
+        )
+        fi
         
         local tailscale_runcmd=""
         if [[ "$TAILSCALE_ENABLED" =~ ^(yes|y)$ ]] && [[ -n "$TAILSCALE_AUTH_KEY" ]]; then
