@@ -151,5 +151,3 @@ jobs:
             echo "i18n test: FAILED (got: '$RESULT')"
             exit 1
           fi
-            exit 1
-          fi
