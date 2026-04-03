@@ -55,11 +55,11 @@ for var in "${VARS[@]}"; do
     key="${var%%=*}"
     value="${var#*=}"
     
-    # Escape special characters for sed
+    # Escape special characters for sed (use # as delimiter to avoid / conflicts)
     value_escaped=$(echo "$value" | sed 's/[\/&]/\\&/g')
     
-    # Replace {{ KEY }} with value
-    content=$(echo "$content" | sed "s/${OPEN_DEL}[[:space:]]*${key}[[:space:]]*${CLOSE_DEL}/${value_escaped}/g")
+    # Replace {{ KEY }} with value (use # as sed delimiter)
+    content=$(echo "$content" | sed "s#${OPEN_DEL}[[:space:]]*${key}[[:space:]]*${CLOSE_DEL}#${value_escaped}#g")
 done
 
 # Output
