@@ -2,10 +2,32 @@
 # DeployX - One-Click VPS Deployment
 # Usage: curl -fsSL https://raw.githubusercontent.com/nimbus-spec/deployx/main/deployx.sh | bash
 
+# Force UTF-8 encoding to prevent garbled Chinese characters
+export LC_ALL=C.UTF-8
+export LANG=C.UTF-8
+
 set -e
 
 REPO_URL="https://raw.githubusercontent.com/nimbus-spec/deployx/main"
 SUPPORTED_ARCH="x86_64 aarch64 armv7l"
+
+check_encoding() {
+    if [ -z "$LC_ALL" ] || [ "$LC_ALL" != "C.UTF-8" ]; then
+        export LC_ALL=C.UTF-8
+        export LANG=C.UTF-8
+    fi
+    
+    if ! locale -a 2>/dev/null | grep -qi "utf8\|utf-8"; then
+        if command -v apt-get &>/dev/null; then
+            apt-get update -qq 2>/dev/null
+            apt-get install -y -qq locales 2>/dev/null
+            locale-gen en_US.UTF-8 2>/dev/null || true
+            locale-gen zh_CN.UTF-8 2>/dev/null || true
+            export LC_ALL=C.UTF-8
+            export LANG=C.UTF-8
+        fi
+    fi
+}
 
 check_deps() {
     local missing=()
@@ -109,6 +131,7 @@ main() {
     echo ""
     
     echo "[*] Checking system..."
+    check_encoding
     check_arch
     check_deps
     
@@ -171,6 +194,9 @@ main() {
     echo "[*] Starting deployment wizard..."
     echo "=============================================="
     echo ""
+    
+    export LC_ALL=C.UTF-8
+    export LANG=C.UTF-8
     
     bash generate.sh "$@"
     local exit_code=$?
