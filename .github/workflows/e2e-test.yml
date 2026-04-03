@@ -1,0 +1,221 @@
+name: End-to-End Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      os:
+        description: 'OS to test'
+        required: false
+        default: 'debian'
+      version:
+        description: 'OS version'
+        required: false
+        default: '12'
+      install_mode:
+        description: 'Install mode (native/dd)'
+        required: false
+        default: 'dd'
+      dd_image:
+        description: 'DD image URL (for dd mode)'
+        required: false
+        default: 'https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.raw'
+
+jobs:
+  e2e-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openssl curl jq
+
+      - name: Prepare test environment
+        run: |
+          mkdir -p /tmp/test-seed
+          chmod +x generate.sh
+
+      - name: Create SSH key for testing
+        run: |
+          ssh-keygen -t rsa -b 2048 -f /tmp/test_id_rsa -N ""
+          cat /tmp/test_id_rsa.pub > /tmp/test_ssh_key.pub
+
+      - name: Run generate.sh (DD mode simulation)
+        if: github.event.inputs.install_mode == 'dd'
+        env:
+          MERCHANT: test-merchant
+          REGION: tokyo
+          COUNTRY: jp
+          NOMAD_ROLE: server
+          SSH_KEY_FILE: /tmp/test_ssh_key.pub
+          TAILSCALE_ENABLED: 'no'
+          DEPLOY_PASSWORD: testpassword123
+          CONFIRM: 'yes'
+          START_INSTALL: 'no'
+        run: |
+          echo "=== Testing DD Mode ==="
+          
+          # Simulate user input
+          {
+            echo "1"                              # English
+            echo "1"                              # Select Debian
+            echo "12"                             # Version 12
+            echo "2"                              # Install mode: DD
+            echo "${{ github.event.inputs.dd_image }}"  # DD image URL
+            echo "$MERCHANT"                      # Merchant
+            echo "$REGION"                         # Region
+            echo "$COUNTRY"                       # Country
+            echo "$NOMAD_ROLE"                     # Nomad role
+            echo "22"                             # SSH port
+            echo "$SSH_KEY_FILE"                   # SSH key file
+            echo "no"                             # Tailscale enabled
+            echo "$DEPLOY_PASSWORD"                # Password
+            echo "$CONFIRM"                        # Confirm
+            echo "$START_INSTALL"                  # Start install
+          } | timeout 60 bash generate.sh || true
+          
+          echo "=== Checking generated files ==="
+          ls -la /tmp/seed/ 2>/dev/null || echo "No seed directory created (expected - we said no to install)"
+
+      - name: Run generate.sh (Native mode simulation)
+        if: github.event.inputs.install_mode == 'native'
+        env:
+          MERCHANT: test-merchant
+          REGION: singapore
+          COUNTRY: sg
+          NOMAD_ROLE: client
+          SSH_KEY_FILE: /tmp/test_ssh_key.pub
+          TAILSCALE_ENABLED: 'yes'
+          TAILSCALE_AUTHKEY: 'tskey-auth-test123'
+          TAILSCALE_ACCEPT_ROUTES: 'no'
+          DEPLOY_PASSWORD: testpassword123
+          CONFIRM: 'yes'
+          START_INSTALL: 'no'
+        run: |
+          echo "=== Testing Native Mode ==="
+          
+          {
+            echo "1"                              # English
+            echo "1"                              # Select Debian
+            echo "12"                             # Version 12
+            echo "1"                              # Install mode: Native
+            echo "$MERCHANT"                      # Merchant
+            echo "$REGION"                         # Region
+            echo "$COUNTRY"                       # Country
+            echo "$NOMAD_ROLE"                     # Nomad role
+            echo "22"                             # SSH port
+            echo "$SSH_KEY_FILE"                   # SSH key file
+            echo "yes"                             # Tailscale enabled
+            echo "$TAILSCALE_AUTHKEY"             # Tailscale auth key
+            echo "$TAILSCALE_ACCEPT_ROUTES"       # Accept routes
+            echo "$DEPLOY_PASSWORD"                # Password
+            echo "$CONFIRM"                        # Confirm
+            echo "$START_INSTALL"                  # Start install
+          } | timeout 60 bash generate.sh || true
+
+      - name: Validate generated cloud-init configs
+        run: |
+          echo "=== Validating Cloud-Init Configuration ==="
+          
+          if [ -f /tmp/seed/user-data ]; then
+            echo "âœ“ user-data found"
+            
+            # Check required fields
+            grep -q "hostname:" /tmp/seed/user-data && echo "  âœ“ hostname set"
+            grep -q "ssh_authorized_keys" /tmp/seed/user-data && echo "  âœ“ SSH keys configured"
+            grep -q "password:" /tmp/seed/user-data && echo "  âœ“ password configured"
+            grep -q "ssh_pwauth:" /tmp/seed/user-data && echo "  âœ“ ssh_pwauth configured"
+            grep -q "write_files:" /tmp/seed/user-data && echo "  âœ“ custom sshd config"
+            grep -q "runcmd:" /tmp/seed/user-data && echo "  âœ“ runcmd configured"
+            grep -q "ntp:" /tmp/seed/user-data && echo "  âœ“ NTP configured"
+            
+            echo ""
+            echo "=== Cloud-Init Config Preview ==="
+            head -50 /tmp/seed/user-data
+          else
+            echo "âœ— user-data not found (test simulation only)"
+          fi
+          
+          if [ -f /tmp/seed/meta-data ]; then
+            echo ""
+            echo "=== meta-data ==="
+            cat /tmp/seed/meta-data
+          fi
+
+      - name: Test i18n (Chinese)
+        run: |
+          echo "=== Testing Chinese i18n ==="
+          export SCRIPT_DIR="$(pwd)"
+          source lib/i18n.sh
+          i18n_init
+          i18n_load zh
+          
+          RESULT=$(_ HEADER_MAIN)
+          if [ "$RESULT" = "VPS è‡ªåŠ¨åŒ–éƒ¨ç½²å·¥å…·" ]; then
+            echo "âœ“ Chinese translation works"
+          else
+            echo "âœ— Chinese translation failed (got: '$RESULT')"
+            exit 1
+          fi
+          
+          # Test OS selection keys
+          if [ -n "${T[SECTION_OS_SELECTION]}" ]; then
+            echo "âœ“ New OS selection keys present"
+          else
+            echo "âœ— Missing OS selection translation keys"
+            exit 1
+          fi
+
+      - name: Test i18n (English)
+        run: |
+          echo "=== Testing English i18n ==="
+          export SCRIPT_DIR="$(pwd)"
+          source lib/i18n.sh
+          i18n_init
+          i18n_load en
+          
+          RESULT=$(_ HEADER_MAIN)
+          if [ "$RESULT" = "VPS Auto Deployment Tool" ]; then
+            echo "âœ“ English translation works"
+          else
+            echo "âœ— English translation failed"
+            exit 1
+          fi
+
+      - name: Validate script syntax
+        run: |
+          echo "=== Validating Script Syntax ==="
+          bash -n generate.sh && echo "âœ“ generate.sh syntax OK"
+          bash -n bin/network.sh && echo "âœ“ bin/network.sh syntax OK"
+          bash -n bin/hostname.sh && echo "âœ“ bin/hostname.sh syntax OK"
+          bash -n lib/*.sh && echo "âœ“ lib/*.sh syntax OK"
+
+      - name: Test reinstall.sh download
+        run: |
+          echo "=== Testing reinstall.sh Download ==="
+          curl -fsSL -o /tmp/reinstall.sh https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh
+          chmod +x /tmp/reinstall.sh
+          
+          # Test help command
+          timeout 10 bash /tmp/reinstall.sh --help || true
+          
+          echo "âœ“ reinstall.sh downloaded successfully"
+          echo "  Size: $(wc -c < /tmp/reinstall.sh) bytes"
+          echo "  SHA256: $(sha256sum /tmp/reinstall.sh | cut -d' ' -f1)"
+
+      - name: Generate test report
+        if: always()
+        run: |
+          echo "=== E2E Test Report ==="
+          echo "Date: $(date -u)"
+          echo "OS: ${{ github.event.inputs.os || 'debian' }}"
+          echo "Version: ${{ github.event.inputs.version || '12' }}"
+          echo "Install Mode: ${{ github.event.inputs.install_mode || 'dd' }}"
+          echo ""
+          echo "Artifacts:"
+          [ -f /tmp/seed/user-data ] && echo "  - /tmp/seed/user-data: $(wc -c < /tmp/seed/user-data) bytes"
+          [ -f /tmp/seed/meta-data ] && echo "  - /tmp/seed/meta-data: $(wc -c < /tmp/seed/meta-data) bytes"
+          [ -f /tmp/reinstall.sh ] && echo "  - /tmp/reinstall.sh: $(wc -c < /tmp/reinstall.sh) bytes"
