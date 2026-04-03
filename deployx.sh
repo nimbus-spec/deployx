@@ -33,10 +33,6 @@ check_deps() {
     echo "[+] Dependencies OK"
 }
 
-check_arch() {
-    echo "[*] Architecture: $(uname -m)"
-}
-
 download() {
     local path="$1" dest="$2" name="$3"
     echo "[*] Downloading $name..."
@@ -50,7 +46,6 @@ main() {
     echo ""
     
     check_encoding
-    check_arch
     check_deps
     
     local tmp_dir=$(mktemp -d)
@@ -60,17 +55,29 @@ main() {
     echo "[*] Working dir: $tmp_dir"
     mkdir -p lib bin templates config translations
     
+    # Download all scripts
     download "deployx.sh" "deployx.sh" "bootstrap"
-    download "generate.sh" "generate.sh" "main script"
+    download "generate.sh" "generate.sh" "main"
+    
+    # Download library
     download "lib/output.sh" "lib/output.sh" "output lib"
-    download "lib/detect.sh" "lib/detect.sh" "detect lib"
-    download "lib/network.sh" "lib/network.sh" "network lib"
     download "lib/i18n.sh" "lib/i18n.sh" "i18n lib"
-    download "bin/detect.sh" "bin/detect.sh" "detect bin"
-    download "bin/network.sh" "bin/network.sh" "network bin"
-    download "bin/hostname.sh" "bin/hostname.sh" "hostname bin"
+    
+    # Download modular bin scripts
+    download "bin/detect.sh" "bin/detect.sh" "detect"
+    download "bin/network.sh" "bin/network.sh" "network"
+    download "bin/location.sh" "bin/location.sh" "location"
+    download "bin/hostname.sh" "bin/hostname.sh" "hostname"
+    download "bin/nomad.sh" "bin/nomad.sh" "nomad"
+    download "bin/tailscale.sh" "bin/tailscale.sh" "tailscale"
+    download "bin/render.sh" "bin/render.sh" "render"
+    download "bin/install.sh" "bin/install.sh" "install"
+    
+    # Download templates
     download "templates/user-data.tpl" "templates/user-data.tpl" "user-data"
     download "templates/meta-data.tpl" "templates/meta-data.tpl" "meta-data"
+    
+    # Download config and translations
     download "config/region-codes.conf" "config/region-codes.conf" "region codes"
     download "translations/en.sh" "translations/en.sh" "English"
     download "translations/zh.sh" "translations/zh.sh" "Chinese"
