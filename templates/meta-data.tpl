@@ -1,1 +1,2 @@
-﻿instance-id: {{ HOSTNAME }}`nlocal-hostname: {{ HOSTNAME }}`n
+instance-id: {{ HOSTNAME }}
+local-hostname: {{ HOSTNAME }}
