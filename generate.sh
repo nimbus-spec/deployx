@@ -42,9 +42,9 @@ OS_VERSIONS=(
 
 select_language() {
     echo ""
-    echo "Select language / é€‰æ‹©è¯­è¨€:
+    echo "Select language / é€‰æ‹©è¯­è¨€:"
     echo "  1) English"
-    echo "  2) ä¸­æ–‡
+    echo "  2) ä¸­æ–‡"
     echo ""
     read -p "Choice [1]: " choice
     choice="${choice:-1}"
