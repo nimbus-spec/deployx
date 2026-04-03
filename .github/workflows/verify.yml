@@ -138,12 +138,22 @@ jobs:
           echo "=== Testing i18n loading ==="
           
           export SCRIPT_DIR="."
+          pwd
+          ls -la
+          ls -la translations/ || echo "translations not found"
+          
           source lib/i18n.sh
-          i18n_init
-          i18n_load "en"
+          echo "i18n_init result: $(i18n_init; echo $?)"
+          echo "i18n_load result: $(i18n_load en; echo $?)"
+          
+          echo "I18N_LOADED: $I18N_LOADED"
+          echo "T[HEADER_MAIN]: ${T[HEADER_MAIN]}"
           
           # Test a few translations
-          if [ "$(_ HEADER_MAIN)" = "VPS Auto Deployment Tool" ]; then
+          RESULT=$(_ HEADER_MAIN)
+          echo "Translation result: '$RESULT'"
+          
+          if [ "$RESULT" = "VPS Auto Deployment Tool" ]; then
             echo "i18n load: OK"
           else
             echo "i18n load: FAILED"
