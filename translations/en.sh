@@ -1,1 +1,63 @@
-#!/bin/bash`n# translations/en.sh - English translations`n`ndeclare -A T`n`nT["APP_NAME"]="VPS Auto Deployment Tool"`nT["APP_DESC"]="Unix philosophy based modular deployment"`n`n# Main menu`nT["HEADER_MAIN"]="VPS Auto Deployment Tool"`nT["SECTION_CONFIG"]="User Configuration"`nT["SECTION_HARDWARE"]="Hardware Detection"`nT["SECTION_NETWORK"]="Network Detection"`nT["SECTION_SSH"]="SSH Configuration"`nT["SECTION_PASSWORD"]="User Password"`nT["SECTION_CONFIRM"]="Configuration Summary"`nT["SECTION_GENERATING"]="Generating Configuration"`n`n# Prompts`nT["PROMPT_MERCHANT"]="Merchant ID (oracle/aws/hetzner/vultr): "`nT["PROMPT_REGION"]="Region (tokyo/frankfurt/newyork): "`nT["PROMPT_COUNTRY"]="Country code (jp/de/us): "`nT["PROMPT_NOMAD_ROLE"]="Nomad role [server]: "`nT["PROMPT_SSH_PORT"]="SSH port [22]: "`nT["PROMPT_SSH_KEY"]="SSH public key file [/root/.ssh/id_rsa.pub]: "`nT["PROMPT_PASSWORD"]="Set password for deploy user: "`nT["PROMPT_CONFIRM"]="Confirm installation? (yes/no): "`nT["PROMPT_START_INSTALL"]="Start DD installation? (yes/no): "`n`n# Info messages`nT["INFO_CPU"]="CPU cores"`nT["INFO_MEMORY"]="Memory"`nT["INFO_DISK"]="Disk"`nT["INFO_NET_IFACE"]="Network interface"`nT["INFO_NET_TYPE"]="Network type"`n["INFO_PUB_IPV4"]="Public IPv4"`nT["INFO_PRIV_IPV4"]="Private IPv4"`nT["INFO_IPV6"]="IPv6"`nT["INFO_GATEWAY"]="Gateway"`nT["INFO_SSH_KEY_LOADED"]="SSH public key loaded"`nT["INFO_SSH_KEY_MISSING"]="SSH public key not found"`nT["INFO_SSH_KEY_MANUAL"]="Enter SSH public key manually"`nT["INFO_INSTALL_START"]="Installing Debian..."`nT["INFO_CONFIG_GENERATED"]="Configuration generated at /tmp/seed/"`n`n# Status`nT["STATUS_NONE"]="None"`n`n# Network types`nT["NET_TYPE_V4"]="IPv4"`nT["NET_TYPE_V6"]="IPv6"`nT["NET_TYPE_DUAL"]="Dual stack"`nT["NET_TYPE_NAT"]="NAT"`nT["NET_TYPE_UNKNOWN"]="Unknown"`n`n# Summary labels`nT["LABEL_HOSTNAME"]="Hostname"`nT["LABEL_MERCHANT"]="Merchant"`nT["LABEL_REGION"]="Region"`nT["LABEL_COUNTRY"]="Country"`nT["LABEL_NET_TYPE"]="Network type"`nT["LABEL_NOMAD_ROLE"]="Nomad role"`nT["LABEL_SSH_PORT"]="SSH port"`nT["LABEL_HARDWARE"]="Hardware"`nT["LABEL_CPU_CORES"]="CPU cores"`nT["LABEL_MEMORY_MB"]="Memory"`nT["LABEL_DISK_GB"]="Disk"`n`n# Yes/No`nT["YES"]="yes"`nT["NO"]="no"`n`n# Continue prompt`nT["PROMPT_CONTINUE"]="Continue?"`n
+#!/bin/bash
+# translations/en.sh - English translations
+
+declare -A T
+
+T[HEADER_MAIN]="VPS Auto Deployment Tool"
+T[HEADER_SUCCESS]="Installation Complete"
+T[HEADER_ERROR]="Error"
+
+T[SECTION_CONFIG]="Configuration"
+T[SECTION_HARDWARE]="Hardware Detection"
+T[SECTION_NETWORK]="Network Configuration"
+T[SECTION_SSH]="SSH Configuration"
+T[SECTION_PASSWORD]="Password Setup"
+T[SECTION_CONFIRM]="Confirm Configuration"
+T[SECTION_GENERATING]="Generating Configuration"
+
+T[PROMPT_MERCHANT]="Merchant/Provider name: "
+T[PROMPT_REGION]="Region (e.g., tokyo, singapore): "
+T[PROMPT_COUNTRY]="Country code (e.g., jp, sg): "
+T[PROMPT_NOMAD_ROLE]="Nomad role (server/client): "
+T[PROMPT_SSH_PORT]="SSH port [22]: "
+T[PROMPT_SSH_KEY]="SSH public key file: "
+T[PROMPT_PASSWORD]="Deployment password: "
+T[PROMPT_CONFIRM]="Start installation? (yes/no): "
+T[PROMPT_START_INSTALL]="Proceed with installation? (yes/no): "
+
+T[INFO_CPU]="CPU"
+T[INFO_MEMORY]="Memory"
+T[INFO_DISK]="Disk"
+T[INFO_NET_IFACE]="Network Interface"
+T[INFO_NET_TYPE]="Network Type"
+T[INFO_PUB_IPV4]="Public IPv4"
+T[INFO_PRIV_IPV4]="Private IPv4"
+T[INFO_SSH_KEY_LOADED]="SSH key loaded"
+T[INFO_SSH_KEY_MISSING]="SSH key not found"
+T[INFO_SSH_KEY_MANUAL]="Enter SSH public key manually: "
+T[INFO_CONFIG_GENERATED]="Configuration generated successfully"
+T[INFO_INSTALL_START]="Starting installation..."
+T[INFO_INSTALL_COMPLETE]="Installation started. Check your provider's console for progress."
+
+T[NET_TYPE_V4]="IPv4 Only"
+T[NET_TYPE_V6]="IPv6 Only"
+T[NET_TYPE_DUAL]="Dual Stack"
+T[NET_TYPE_NAT]="NAT"
+T[NET_TYPE_UNKNOWN]="Unknown"
+
+T[STATUS_NONE]="None"
+
+T[LABEL_HOSTNAME]="Hostname"
+T[LABEL_MERCHANT]="Merchant"
+T[LABEL_REGION]="Region"
+T[LABEL_COUNTRY]="Country"
+T[LABEL_NET_TYPE]="Network"
+T[LABEL_NOMAD_ROLE]="Nomad Role"
+T[LABEL_SSH_PORT]="SSH Port"
+T[LABEL_HARDWARE]="Hardware"
+T[LABEL_CPU_CORES]="CPU Cores"
+T[LABEL_MEMORY_MB]="Memory"
+T[LABEL_DISK_GB]="Disk"
+
+T[YES]="yes"
+T[NO]="no"
