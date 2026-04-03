@@ -13,13 +13,34 @@ source "$SCRIPT_DIR/config/region-codes.conf"
 
 i18n_init
 
-DEFAULT_IMAGE="https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.raw"
+declare -A OS_OPTIONS
+OS_OPTIONS=(
+    ["debian"]="Debian (12/13)"
+    ["ubuntu"]="Ubuntu (20.04/22.04/24.04)"
+    ["alpine"]="Alpine Linux (3.20/3.21)"
+    ["centos"]="CentOS Stream (9/10)"
+    ["rocky"]="Rocky Linux (8/9/10)"
+    ["almalinux"]="AlmaLinux (8/9/10)"
+    ["fedora"]="Fedora (42/43)"
+    ["dd"]="Custom DD Image"
+)
+
+declare -A OS_VERSIONS
+OS_VERSIONS=(
+    ["debian"]="12"
+    ["ubuntu"]="24.04"
+    ["alpine"]="3.21"
+    ["centos"]="9"
+    ["rocky"]="9"
+    ["almalinux"]="9"
+    ["fedora"]="42"
+)
 
 select_language() {
     echo ""
-    echo "Select language / 选择语言:"
+    echo "Select language / é€‰æ‹©è¯­è¨€:"
     echo "  1) English"
-    echo "  2) 中文"
+    echo "  2) ä¸­æ–‡"
     echo ""
     read -p "Choice [1]: " choice
     choice="${choice:-1}"
@@ -29,6 +50,60 @@ select_language() {
             ;;
         *)
             i18n_load "en"
+            ;;
+    esac
+}
+
+select_os() {
+    echo ""
+    echo "$(_ SECTION_OS_SELECTION)"
+    echo ""
+    local i=1
+    local keys=()
+    for key in "${!OS_OPTIONS[@]}"; do
+        echo "  $i) ${OS_OPTIONS[$key]}"
+        keys+=("$key")
+        ((i++))
+    done
+    echo ""
+    read -p "$(_ PROMPT_OS_SELECTION)" choice
+    choice="${choice:-1}"
+    
+    local index=$((choice - 1))
+    if [[ $index -ge 0 ]] && [[ $index -lt ${#keys[@]} ]]; then
+        SELECTED_OS="${keys[$index]}"
+    else
+        SELECTED_OS="debian"
+    fi
+}
+
+select_os_version() {
+    if [[ "$SELECTED_OS" == "dd" ]]; then
+        return
+    fi
+    
+    echo ""
+    local default_ver="${OS_VERSIONS[$SELECTED_OS]}"
+    read -p "$(echo "$(_ PROMPT_OS_VERSION)" | sed "s/{{version}}/$default_ver/")" OS_VERSION
+    OS_VERSION="${OS_VERSION:-$default_ver}"
+}
+
+select_install_mode() {
+    echo ""
+    echo "$(_ SECTION_INSTALL_MODE)"
+    echo ""
+    echo "  1) $(_ INSTALL_MODE_NATIVE)"
+    echo "  2) $(_ INSTALL_MODE_DD)"
+    echo ""
+    read -p "$(_ PROMPT_INSTALL_MODE)" choice
+    choice="${choice:-1}"
+    
+    case "$choice" in
+        2)
+            INSTALL_MODE="dd"
+            ;;
+        *)
+            INSTALL_MODE="native"
             ;;
     esac
 }
@@ -43,10 +118,34 @@ get_net_type_label() {
     esac
 }
 
+get_os_label() {
+    if [[ "$SELECTED_OS" == "dd" ]]; then
+        echo "$(_ LABEL_CUSTOM_DD)"
+    else
+        echo "${OS_OPTIONS[$SELECTED_OS]}"
+    fi
+}
+
 main() {
     select_language
     
     header "$(_ HEADER_MAIN)"
+    
+    section "$(_ SECTION_OS_SELECTION)"
+    select_os
+    select_os_version
+    
+    if [[ "$SELECTED_OS" == "dd" ]]; then
+        section "$(_ SECTION_DD_IMAGE)"
+        read -p "$(_ PROMPT_DD_IMAGE_URL)" DD_IMAGE_URL
+        if [[ -z "$DD_IMAGE_URL" ]]; then
+            error "$(_ ERROR_DD_IMAGE_REQUIRED)"
+            exit 1
+        fi
+        INSTALL_MODE="dd"
+    else
+        select_install_mode
+    fi
     
     section "$(_ SECTION_CONFIG)"
     
@@ -119,6 +218,8 @@ main() {
     header "$(_ SECTION_CONFIRM)"
     cat << EOF
   $(_ LABEL_HOSTNAME): $HOSTNAME
+  $(_ LABEL_OS): $(get_os_label)
+  $(_ LABEL_INSTALL_MODE): $(if [[ "$INSTALL_MODE" == "dd" ]]; then echo "$(_ INSTALL_MODE_DD)"; else echo "$(_ INSTALL_MODE_NATIVE)"; fi)
   $(_ LABEL_MERCHANT): $MERCHANT
   $(_ LABEL_REGION): $REGION (${region_code})
   $(_ LABEL_COUNTRY): $COUNTRY
@@ -133,37 +234,63 @@ main() {
     $(_ LABEL_DISK_GB): $(detect_disk_gb)GB
 EOF
     
+    if [[ "$SELECTED_OS" == "dd" ]]; then
+        echo ""
+        echo "  $(_ LABEL_DD_IMAGE): $DD_IMAGE_URL"
+    fi
+    
     echo ""
     read -p "$(_ PROMPT_CONFIRM)" confirm
     [[ "$confirm" != "$(_ YES)" ]] && exit 0
     
     header "$(_ SECTION_GENERATING)"
     
-    if [[ -n "$PUBLIC_V4" ]]; then
-        NETWORK_CONFIG="      addresses:
+    mkdir -p /tmp/seed
+    
+    if [[ "$INSTALL_MODE" == "dd" ]]; then
+        cp "$SCRIPT_DIR/templates/user-data.tpl" /tmp/seed/user-data
+        
+        if [[ -n "$PUBLIC_V4" ]]; then
+            NETWORK_CONFIG="      addresses:
         - $PUBLIC_V4
       gateway4: $GATEWAY"
-    else
-        NETWORK_CONFIG="      dhcp4: true"
-    fi
-    
-    if [[ -n "$PUBLIC_V6" ]]; then
-        NETWORK_CONFIG="$NETWORK_CONFIG
+        else
+            NETWORK_CONFIG="      dhcp4: true"
+        fi
+        
+        if [[ -n "$PUBLIC_V6" ]]; then
+            NETWORK_CONFIG="$NETWORK_CONFIG
       dhcp6: true
       accept-ra: true"
-    fi
-    
-    NETWORK_CONFIG="$NETWORK_CONFIG
+        fi
+        
+        NETWORK_CONFIG="$NETWORK_CONFIG
       nameservers:
         addresses:
           - 1.1.1.1
           - 8.8.8.8
           - 223.5.5.5
         search: []"
-    
-    local nomad_runcmd=""
-    if [[ "$NOMAD_ROLE" == "server" ]]; then
-        nomad_runcmd=$(cat << 'NOMADCMD'
+        
+        local kernel_tuning=$(cat << 'KERNEL'
+  - |
+    cat > /etc/sysctl.d/99-tuning.conf << 'SYSCTL'
+    net.core.default_qdisc = fq
+    net.ipv4.tcp_congestion_control = bbr
+    net.ipv4.tcp_fastopen = 3
+    net.core.somaxconn = 65535
+    net.ipv4.tcp_max_syn_backlog = 65535
+    net.ipv4.tcp_syncookies = 1
+    fs.file-max = 65535
+    SYSCTL
+    sysctl -p /etc/sysctl.d/99-tuning.conf 2>/dev/null || true
+    modprobe tcp_bbr 2>/dev/null || true
+KERNEL
+)
+        
+        local nomad_runcmd=""
+        if [[ "$NOMAD_ROLE" == "server" ]]; then
+            nomad_runcmd=$(cat << 'NOMADCMD'
   - |
     NOMAD_VERSION=$(curl -fsSL "https://api.github.com/repos/hashicorp/nomad/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/' || echo "1.7.6")
     curl -fsSL "https://releases.hashicorp.com/nomad/${NOMAD_VERSION}/nomad_${NOMAD_VERSION}_linux_amd64.zip" -o /tmp/nomad.zip
@@ -200,73 +327,120 @@ EOF
     systemctl enable nomad
     systemctl start nomad
 NOMADCMD
-    )
-    fi
-    
-    local tailscale_runcmd=""
-    if [[ "$TAILSCALE_ENABLED" =~ ^(yes|y)$ ]] && [[ -n "$TAILSCALE_AUTH_KEY" ]]; then
-        local accept_routes_flag=""
-        if [[ "$TAILSCALE_ACCEPT_ROUTES" =~ ^(yes|y)$ ]]; then
-            accept_routes_flag="--accept-routes"
+            )
         fi
-        tailscale_runcmd="  - |
+        
+        local tailscale_runcmd=""
+        if [[ "$TAILSCALE_ENABLED" =~ ^(yes|y)$ ]] && [[ -n "$TAILSCALE_AUTH_KEY" ]]; then
+            local accept_routes_flag=""
+            if [[ "$TAILSCALE_ACCEPT_ROUTES" =~ ^(yes|y)$ ]]; then
+                accept_routes_flag="--accept-routes"
+            fi
+            tailscale_runcmd="  - |
     curl -fsSL https://tailscale.com/install.sh | sh
     tailscale up --authkey=${TAILSCALE_AUTH_KEY} ${accept_routes_flag}
 "
-    fi
-    
-    local kernel_tuning=$(cat << 'KERNEL'
-  - |
-    cat > /etc/sysctl.d/99-tuning.conf << 'SYSCTL'
-    net.core.default_qdisc = fq
-    net.ipv4.tcp_congestion_control = bbr
-    net.ipv4.tcp_fastopen = 3
-    net.core.somaxconn = 65535
-    net.ipv4.tcp_max_syn_backlog = 65535
-    net.ipv4.tcp_syncookies = 1
-    fs.file-max = 65535
-    SYSCTL
-    sysctl -p /etc/sysctl.d/99-tuning.conf 2>/dev/null || true
-    modprobe tcp_bbr 2>/dev/null || true
-KERNEL
-)
-    
-    RUNCMD=$(cat << 'RUNCMD'
+        fi
+        
+        local RUNCMD=$(cat << 'RUNCMD'
   - systemctl restart sshd
   - apt update
   - DEBIAN_FRONTEND=noninteractive apt upgrade -y
   - timedatectl set-timezone UTC
-$kernel_tuning
-$nomad_runcmd
-$tailscale_runcmd
+KERNEL_PLACEHOLDER
+NOMAD_PLACEHOLDER
+TAILSCALE_PLACEHOLDER
   - cloud-init clean --logs
 RUNCMD
 )
-    
-    mkdir -p /tmp/seed
-    
-    cp "$SCRIPT_DIR/templates/user-data.tpl" /tmp/seed/user-data
-    
-    sed -i "s|{{ HOSTNAME }}|$HOSTNAME|g" /tmp/seed/user-data
-    sed -i "s|{{ PASSWORD_HASH }}|$PASSWORD_HASH|g" /tmp/seed/user-data
-    sed -i "s|{{ SSH_KEY }}|$SSH_KEY|g" /tmp/seed/user-data
-    sed -i "s|{{ SSH_PORT }}|$SSH_PORT|g" /tmp/seed/user-data
-    sed -i "s|{{ NOMAD_ROLE }}|$NOMAD_ROLE|g" /tmp/seed/user-data
-    sed -i "s|{{ NETWORK_CONFIG }}|$NETWORK_CONFIG|g" /tmp/seed/user-data
-    sed -i "s|{{ RUNCMD }}|$RUNCMD|g" /tmp/seed/user-data
-    
-    cp "$SCRIPT_DIR/templates/meta-data.tpl" /tmp/seed/meta-data
-    sed -i "s|{{ HOSTNAME }}|$HOSTNAME|g" /tmp/seed/meta-data
-    
-    success "$(_ INFO_CONFIG_GENERATED)"
-    
-    echo ""
-    read -p "$(_ PROMPT_START_INSTALL)" start_install
-    [[ "$start_install" != "$(_ YES)" ]] && exit 0
-    
-    info "$(_ INFO_INSTALL_START)"
-    cd /tmp
-    bash reinstall.sh dd --img "$DEFAULT_IMAGE" --cloud-data "file:///tmp/seed/"
+        
+        RUNCMD="${RUNCMD/KERNEL_PLACEHOLDER/$kernel_tuning}"
+        RUNCMD="${RUNCMD/NOMAD_PLACEHOLDER/$nomad_runcmd}"
+        RUNCMD="${RUNCMD/TAILSCALE_PLACEHOLDER/$tailscale_runcmd}"
+        
+        sed -i "s|{{ HOSTNAME }}|$HOSTNAME|g" /tmp/seed/user-data
+        sed -i "s|{{ PASSWORD_HASH }}|$PASSWORD_HASH|g" /tmp/seed/user-data
+        sed -i "s|{{ SSH_KEY }}|$SSH_KEY|g" /tmp/seed/user-data
+        sed -i "s|{{ SSH_PORT }}|$SSH_PORT|g" /tmp/seed/user-data
+        sed -i "s|{{ NOMAD_ROLE }}|$NOMAD_ROLE|g" /tmp/seed/user-data
+        sed -i "s|{{ NETWORK_CONFIG }}|$NETWORK_CONFIG|g" /tmp/seed/user-data
+        sed -i "s|{{ RUNCMD }}|$RUNCMD|g" /tmp/seed/user-data
+        
+        cp "$SCRIPT_DIR/templates/meta-data.tpl" /tmp/seed/meta-data
+        sed -i "s|{{ HOSTNAME }}|$HOSTNAME|g" /tmp/seed/meta-data
+        
+        success "$(_ INFO_CONFIG_GENERATED)"
+        
+        echo ""
+        read -p "$(_ PROMPT_START_INSTALL)" start_install
+        [[ "$start_install" != "$(_ YES)" ]] && exit 0
+        
+        info "$(_ INFO_INSTALL_START)"
+        cd /tmp
+        
+        curl -O https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh
+        chmod +x reinstall.sh
+        bash reinstall.sh dd --img "$DD_IMAGE_URL" --cloud-data "file:///tmp/seed/"
+        
+    else
+        if [[ -n "$PUBLIC_V4" ]]; then
+            NETWORK_CONFIG="      addresses:
+        - $PUBLIC_V4
+      gateway4: $GATEWAY"
+        else
+            NETWORK_CONFIG="      dhcp4: true"
+        fi
+        
+        if [[ -n "$PUBLIC_V6" ]]; then
+            NETWORK_CONFIG="$NETWORK_CONFIG
+      dhcp6: true
+      accept-ra: true"
+        fi
+        
+        cp "$SCRIPT_DIR/templates/meta-data.tpl" /tmp/seed/meta-data
+        sed -i "s|{{ HOSTNAME }}|$HOSTNAME|g" /tmp/seed/meta-data
+        
+        if [[ "$SELECTED_OS" == "debian" ]] || [[ "$SELECTED_OS" == "ubuntu" ]]; then
+            local network_seed=""
+            if [[ -n "$PUBLIC_V4" ]]; then
+                network_seed="auto eth0
+iface eth0 inet static
+    address $PUBLIC_V4
+    gateway $GATEWAY
+"
+            fi
+            if [[ -n "$PUBLIC_V6" ]]; then
+                network_seed="${network_seed}iface eth0 inet6 static
+    address ${PUBLIC_V6%%/*}
+    netmask 64
+"
+            fi
+            echo "$network_seed" > /tmp/seed/network-config
+        fi
+        
+        success "$(_ INFO_CONFIG_GENERATED)"
+        
+        echo ""
+        read -p "$(_ PROMPT_START_INSTALL)" start_install
+        [[ "$start_install" != "$(_ YES)" ]] && exit 0
+        
+        info "$(_ INFO_INSTALL_START)"
+        cd /tmp
+        
+        curl -O https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh
+        chmod +x reinstall.sh
+        
+        local ssh_key_param="--ssh-key '$SSH_KEY'"
+        if [[ -z "$SSH_KEY" ]]; then
+            ssh_key_param="--password '$DEPLOY_PASS'"
+        fi
+        
+        bash reinstall.sh "$SELECTED_OS" "$OS_VERSION" \
+            --hostname "$HOSTNAME" \
+            --ssh-port "$SSH_PORT" \
+            $ssh_key_param \
+            --cloud-data "file:///tmp/seed/"
+    fi
 }
 
 main "$@"
