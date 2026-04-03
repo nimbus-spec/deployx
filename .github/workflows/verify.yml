@@ -101,13 +101,16 @@ jobs:
           echo "=== Validating script references ==="
           
           # Check that generate.sh sources existing files
-          SOURCE_FILES=$(grep -oP 'source.*\$SCRIPT_DIR/\K[^"]+' generate.sh | sort -u)
+          # Handle both quoted and unquoted paths
+          SOURCE_FILES=$(grep -oP 'source\s+"?\$SCRIPT_DIR/\K[^"]*' generate.sh | sed 's/"$//' | sort -u)
           
+          echo "Found source files:"
           for f in $SOURCE_FILES; do
+            echo "  - $f"
             if [ -f "$f" ]; then
-              echo "OK: $f exists"
+              echo "    OK: exists"
             else
-              echo "ERROR: $f referenced but not found"
+              echo "    ERROR: not found"
               exit 1
             fi
           done
