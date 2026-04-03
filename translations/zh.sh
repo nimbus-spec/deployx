@@ -1,1 +1,63 @@
-#!/bin/bash`n# translations/zh.sh - 中文翻译`n`ndeclare -A T`n`nT["APP_NAME"]="VPS 自动部署工具"`nT["APP_DESC"]="基于 Unix 哲学的模块化部署"`n`n# 主菜单`nT["HEADER_MAIN"]="VPS 自动部署工具"`nT["SECTION_CONFIG"]="用户配置"`nT["SECTION_HARDWARE"]="硬件检测"`nT["SECTION_NETWORK"]="网络检测"`nT["SECTION_SSH"]="SSH 配置"`nT["SECTION_PASSWORD"]="用户密码"`nT["SECTION_CONFIRM"]="配置确认"`nT["SECTION_GENERATING"]="生成配置"`n`n# 提示`nT["PROMPT_MERCHANT"]="商家 ID (oracle/aws/hetzner/vultr): "`nT["PROMPT_REGION"]="区域 (tokyo/frankfurt/newyork): "`nT["PROMPT_COUNTRY"]="国家代码 (jp/de/us): "`nT["PROMPT_NOMAD_ROLE"]="Nomad 角色 [server]: "`nT["PROMPT_SSH_PORT"]="SSH 端口 [22]: "`nT["PROMPT_SSH_KEY"]="SSH 公钥文件 [/root/.ssh/id_rsa.pub]: "`nT["PROMPT_PASSWORD"]="设置 deploy 用户密码: "`nT["PROMPT_CONFIRM"]="确认开始安装? (yes/no): "`nT["PROMPT_START_INSTALL"]="是否开始 DD 安装? (yes/no): "`n`n# 信息消息`nT["INFO_CPU"]="CPU 核心数"`nT["INFO_MEMORY"]="内存"`nT["INFO_DISK"]="磁盘"`nT["INFO_NET_IFACE"]="网络接口"`nT["INFO_NET_TYPE"]="网络类型"`nT["INFO_PUB_IPV4"]="公有 IPv4"`nT["INFO_PRIV_IPV4"]="私有 IPv4"`nT["INFO_IPV6"]="IPv6"`nT["INFO_GATEWAY"]="网关"`nT["INFO_SSH_KEY_LOADED"]="SSH 公钥已加载"`nT["INFO_SSH_KEY_MISSING"]="SSH 公钥文件不存在"`nT["INFO_SSH_KEY_MANUAL"]="手动输入 SSH 公钥"`nT["INFO_INSTALL_START"]="开始安装 Debian..."`nT["INFO_CONFIG_GENERATED"]="配置已生成到 /tmp/seed/"`n`n# 状态`nT["STATUS_NONE"]="无"`n`n# 网络类型`nT["NET_TYPE_V4"]="IPv4"`nT["NET_TYPE_V6"]="IPv6"`nT["NET_TYPE_DUAL"]="双栈"`nT["NET_TYPE_NAT"]="NAT"`nT["NET_TYPE_UNKNOWN"]="未知"`n`n# 摘要标签`nT["LABEL_HOSTNAME"]="主机名"`nT["LABEL_MERCHANT"]="商家"`nT["LABEL_REGION"]="区域"`nT["LABEL_COUNTRY"]="国家"`nT["LABEL_NET_TYPE"]="网络类型"`nT["LABEL_NOMAD_ROLE"]="Nomad 角色"`nT["LABEL_SSH_PORT"]="SSH 端口"`nT["LABEL_HARDWARE"]="硬件"`nT["LABEL_CPU_CORES"]="CPU 核心"`nT["LABEL_MEMORY_MB"]="内存"`nT["LABEL_DISK_GB"]="磁盘"`n`n# 是/否`nT["YES"]="yes"`nT["NO"]="no"`n`n# 继续提示`nT["PROMPT_CONTINUE"]="继续?"`n
+#!/bin/bash
+# translations/zh.sh - Chinese translations
+
+declare -A T
+
+T[HEADER_MAIN]="VPS 自动部署工具"
+T[HEADER_SUCCESS]="安装完成"
+T[HEADER_ERROR]="错误"
+
+T[SECTION_CONFIG]="配置"
+T[SECTION_HARDWARE]="硬件检测"
+T[SECTION_NETWORK]="网络配置"
+T[SECTION_SSH]="SSH 配置"
+T[SECTION_PASSWORD]="密码设置"
+T[SECTION_CONFIRM]="确认配置"
+T[SECTION_GENERATING]="生成配置"
+
+T[PROMPT_MERCHANT]="商家/提供商名称: "
+T[PROMPT_REGION]="区域 (例如: tokyo, singapore): "
+T[PROMPT_COUNTRY]="国家代码 (例如: jp, sg): "
+T[PROMPT_NOMAD_ROLE]="Nomad 角色 (server/client): "
+T[PROMPT_SSH_PORT]="SSH 端口 [22]: "
+T[PROMPT_SSH_KEY]="SSH 公钥文件: "
+T[PROMPT_PASSWORD]="部署密码: "
+T[PROMPT_CONFIRM]="开始安装? (yes/no): "
+T[PROMPT_START_INSTALL]="继续安装? (yes/no): "
+
+T[INFO_CPU]="CPU"
+T[INFO_MEMORY]="内存"
+T[INFO_DISK]="磁盘"
+T[INFO_NET_IFACE]="网络接口"
+T[INFO_NET_TYPE]="网络类型"
+T[INFO_PUB_IPV4]="公网 IPv4"
+T[INFO_PRIV_IPV4]="内网 IPv4"
+T[INFO_SSH_KEY_LOADED]="SSH 密钥已加载"
+T[INFO_SSH_KEY_MISSING]="SSH 密钥未找到"
+T[INFO_SSH_KEY_MANUAL]="手动输入 SSH 公钥: "
+T[INFO_CONFIG_GENERATED]="配置生成成功"
+T[INFO_INSTALL_START]="开始安装..."
+T[INFO_INSTALL_COMPLETE]="安装已启动。请查看服务提供商控制台了解进度。"
+
+T[NET_TYPE_V4]="仅 IPv4"
+T[NET_TYPE_V6]="仅 IPv6"
+T[NET_TYPE_DUAL]="双栈"
+T[NET_TYPE_NAT]="NAT"
+T[NET_TYPE_UNKNOWN]="未知"
+
+T[STATUS_NONE]="无"
+
+T[LABEL_HOSTNAME]="主机名"
+T[LABEL_MERCHANT]="商家"
+T[LABEL_REGION]="区域"
+T[LABEL_COUNTRY]="国家"
+T[LABEL_NET_TYPE]="网络"
+T[LABEL_NOMAD_ROLE]="Nomad 角色"
+T[LABEL_SSH_PORT]="SSH 端口"
+T[LABEL_HARDWARE]="硬件"
+T[LABEL_CPU_CORES]="CPU 核心"
+T[LABEL_MEMORY_MB]="内存"
+T[LABEL_DISK_GB]="磁盘"
+
+T[YES]="yes"
+T[NO]="no"
