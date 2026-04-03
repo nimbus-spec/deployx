@@ -17,7 +17,15 @@
 
 ## å¿«é€Ÿå¼€å§‹
 
-### æ–¹å¼ä¸€: å…‹éš†è¿è¡Œ
+### æ–¹å¼ä¸€: ä¸‹è½½åŽè¿è¡Œ (äº¤äº’å¼ä½¿ç”¨æŽ¨è)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/nimbus-spec/deployx/main/deployx.sh -o deployx.sh
+chmod +x deployx.sh
+./deployx.sh
+```
+
+### æ–¹å¼äºŒ: å…‹éš†é¡¹ç›®
 
 ```bash
 git clone https://github.com/nimbus-spec/deployx.git
@@ -25,17 +33,7 @@ cd deployx
 ./generate.sh
 ```
 
-### æ–¹å¼äºŒ: ä¸€é”®è¿è¡Œ (æŽ¨è)
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/nimbus-spec/deployx/main/deployx.sh | bash
-```
-
-æˆ–
-
-```bash
-wget -qO- https://raw.githubusercontent.com/nimbus-spec/deployx/main/deployx.sh | bash
-```
+> **æ³¨æ„**: `curl ... | bash` ä¸é€‚ç”¨äºŽäº¤äº’å¼è„šæœ¬ï¼Œå› ä¸º `read` å‘½ä»¤éœ€è¦ TTYã€‚è¯·å…ˆä¸‹è½½è„šæœ¬åŽå†æ‰§è¡Œã€‚
 
 ## æ”¯æŒçš„æ“ä½œç³»ç»Ÿ
 
@@ -68,7 +66,7 @@ wget -qO- https://raw.githubusercontent.com/nimbus-spec/deployx/main/deployx.sh 
 
 ## ä½¿ç”¨æ–¹æ³•
 
-1. è¿è¡Œ `curl -fsSL ... | bash` æˆ– `./generate.sh`
+1. ä¸‹è½½å¹¶è¿è¡Œ `deployx.sh`
 2. é€‰æ‹©è¯­è¨€ (English/ä¸­æ–‡)
 3. é€‰æ‹©æ“ä½œç³»ç»Ÿ
 4. é€‰æ‹©å®‰è£…æ¨¡å¼ (åŽŸç”Ÿ/DD)
@@ -81,13 +79,6 @@ wget -qO- https://raw.githubusercontent.com/nimbus-spec/deployx/main/deployx.sh 
    - SSH ç«¯å£å’Œå¯†é’¥
    - **Tailscale VPN** (å¯é€‰)
 7. ç¡®è®¤å¹¶å¼€å§‹å®‰è£…
-
-### è‡ªå®šä¹‰ DD é•œåƒç¤ºä¾‹
-
-```
-é€‰æ‹©æ“ä½œç³»ç»Ÿ: 9 (è‡ªå®šä¹‰ DD é•œåƒ)
-è‡ªå®šä¹‰ DD é•œåƒ URL: https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.raw
-```
 
 ## é¡¹ç›®ç»“æž„
 
@@ -111,7 +102,7 @@ deployx/
 â”‚   â”œâ”€â”€ en.sh              # è‹±æ–‡
 â”‚   â””â”€â”€ zh.sh              # ä¸­æ–‡
 â”œâ”€â”€ generate.sh            # ä¸»å…¥å£
-â”œâ”€â”€ deployx.sh             # ä¸€é”®è¿è¡Œè„šæœ¬
+â”œâ”€â”€ deployx.sh             # ä¸€é”®å®‰è£…è„šæœ¬ (ä¸‹è½½æ‰€æœ‰æ–‡ä»¶)
 â””â”€â”€ README.md
 ```
 
@@ -128,22 +119,6 @@ DeployX æ”¯æŒè‡ªåŠ¨é…ç½® Tailscale VPN ç”¨äºŽé›
 Tailscale è®¤è¯å¯†é’¥: tskey-auth-xxxxx...
 æŽ¥å—æ¥è‡ª tailnet çš„è·¯ç”±? (yes/no): yes
 ```
-
-### åŠŸèƒ½
-
-- é€šè¿‡å®˜æ–¹ Tailscale è„šæœ¬è‡ªåŠ¨å®‰è£…
-- ä½¿ç”¨è®¤è¯å¯†é’¥ (æ— éœ€äº¤äº’å¼ç™»å½•)
-- å¯é€‰è·¯ç”±æŽ¥å— (å­ç½‘è·¯ç”±æ¨¡å¼)
-- é¦–æ¬¡å¯åŠ¨æ—¶ç«‹å³è¿žæŽ¥åˆ°ä½ çš„ tailnet
-
-### è®¤è¯å¯†é’¥
-
-ä»Ž [Tailscale ç®¡ç†æŽ§åˆ¶å°](https://login.tailscale.com/admin/settings/keys) ç”Ÿæˆè®¤è¯å¯†é’¥:
-
-1. è¿›å…¥ Settings > Keys
-2. ç‚¹å‡» "Generate auth key"
-3. å¦‚éœ€è¦å¯è®¾ç½®å¯é‡ç”¨é€‰é¡¹
-4. å¤åˆ¶å¯†é’¥ (ä»¥ `tskey-auth-` å¼€å¤´)
 
 ## Nomad é›†æˆ
 
@@ -175,12 +150,6 @@ DeployX è‡ªåŠ¨é…ç½® HashiCorp Nomad:
 æ ¼å¼: `{country}-{region}-{network_type}-{merchant}-{random8}`
 
 ç¤ºä¾‹: `jp-tyo-v4-conoha-a1b2c3d4`
-
-- `jp` - å›½å®¶ä»£ç 
-- `tyo` - åŒºåŸŸä»£ç  (tokyo)
-- `v4` - ç½‘ç»œç±»åž‹ (v4/v6/dual/nat)
-- `conoha` - å•†å®¶/æä¾›å•†åç§°
-- `a1b2c3d4` - 8ä½éšæœºå­—ç¬¦ä¸²
 
 ## ä¾èµ–
 
