@@ -138,12 +138,18 @@ jobs:
 
       - name: Test i18n loading
         run: |
-          export SCRIPT_DIR="."
-          source lib/i18n.sh
-          i18n_init || true
+          set -e
+          export SCRIPT_DIR="$(pwd)"
+          echo "DEBUG: SCRIPT_DIR=$SCRIPT_DIR"
+          echo "DEBUG: Checking translations dir..."
+          ls -la "$SCRIPT_DIR/translations/" || echo "No translations dir"
+          source "$SCRIPT_DIR/lib/i18n.sh"
+          echo "DEBUG: i18n_init result: $(i18n_init && echo 'OK' || echo 'FAIL')"
           i18n_load en
-          
+          echo "DEBUG: T array size: ${#T[@]}"
+          echo "DEBUG: HEADER_MAIN key exists: ${T[HEADER_MAIN]+yes}"
           RESULT=$(_ HEADER_MAIN)
+          echo "DEBUG: Translation result: '$RESULT'"
           
           if [ "$RESULT" = "VPS Auto Deployment Tool" ]; then
             echo "i18n test: PASSED"
