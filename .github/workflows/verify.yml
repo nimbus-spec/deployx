@@ -1,0 +1,147 @@
+name: Verify Deployment Scripts
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Check line endings
+        run: |
+          echo "=== Checking for CRLF line endings ==="
+          FOUND_CRLF=$(find . -type f \( -name "*.sh" -o -name "*.tpl" -o -name "*.conf" \) -exec file {} \; | grep -c "CRLF" || true)
+          if [ "$FOUND_CRLF" -gt 0 ]; then
+            echo "ERROR: Found $FOUND_CRLF files with CRLF line endings"
+            find . -type f \( -name "*.sh" -o -name "*.tpl" -o -name "*.conf" \) -exec file {} \; | grep "CRLF"
+            exit 1
+          fi
+          echo "No CRLF line endings found"
+
+      - name: Check bash syntax
+        run: |
+          echo "=== Checking bash syntax ==="
+          FAILED=0
+          for f in $(find . -name "*.sh" -type f); do
+            if ! bash -n "$f" 2>&1; then
+              echo "SYNTAX ERROR: $f"
+              FAILED=1
+            fi
+          done
+          if [ $FAILED -eq 1 ]; then
+            exit 1
+          fi
+          echo "All bash scripts have valid syntax"
+
+      - name: Run shellcheck
+        run: |
+          echo "=== Running shellcheck ==="
+          find . -name "*.sh" -type f -exec shellcheck {} + || true
+
+      - name: List repository structure
+        run: |
+          echo "=== Repository structure ==="
+          find . -type f | sort
+
+  i18n:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check i18n completeness
+        run: |
+          echo "=== Checking i18n completeness ==="
+          
+          # Get all translation keys from en.sh
+          EN_KEYS=$(grep -oP 'T\[.+?\]=' translations/en.sh | sed 's/T\[\(.*\)\]=/\1/' | sort)
+          ZH_KEYS=$(grep -oP 'T\[.+?\]=' translations/zh.sh | sed 's/T\[\(.*\)\]=/\1/' | sort)
+          
+          echo "English keys: $(echo "$EN_KEYS" | wc -l)"
+          echo "Chinese keys: $(echo "$ZH_KEYS" | wc -l)"
+          
+          # Check for missing keys in Chinese
+          MISSING=$(comm -23 <(echo "$EN_KEYS") <(echo "$ZH_KEYS"))
+          if [ -n "$MISSING" ]; then
+            echo "WARNING: Missing Chinese translations:"
+            echo "$MISSING"
+            exit 1
+          fi
+          
+          echo "All English keys have Chinese translations"
+
+      - name: Verify i18n functions exist
+        run: |
+          echo "=== Verifying i18n functions ==="
+          grep -q "i18n_load()" lib/i18n.sh && echo "i18n_load: OK"
+          grep -q "^_()" lib/i18n.sh && echo "_ (translate): OK"
+          grep -q "i18n_init()" lib/i18n.sh && echo "i18n_init: OK"
+
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate generate.sh references
+        run: |
+          echo "=== Validating script references ==="
+          
+          # Check that generate.sh sources existing files
+          SOURCE_FILES=$(grep -oP 'source.*\$SCRIPT_DIR/\K[^"]+' generate.sh | sort -u)
+          
+          for f in $SOURCE_FILES; do
+            if [ -f "$f" ]; then
+              echo "OK: $f exists"
+            else
+              echo "ERROR: $f referenced but not found"
+              exit 1
+            fi
+          done
+
+      - name: Validate template placeholders
+        run: |
+          echo "=== Validating template placeholders ==="
+          
+          # Get placeholders from generate.sh
+          PLACEHOLDERS=$(grep -oP '\{\{[^}]+\}\}' generate.sh templates/*.tpl 2>/dev/null | sort -u)
+          
+          echo "Found placeholders:"
+          echo "$PLACEHOLDERS"
+          
+          # Check they are replaced in generate.sh
+          for p in $PLACEHOLDERS; do
+            COUNT=$(grep -c "\|${p}" generate.sh || echo "0")
+            if [ "$COUNT" -eq 0 ]; then
+              echo "WARNING: $p not used in sed replacement"
+            fi
+          done
+
+      - name: Test i18n loading
+        run: |
+          echo "=== Testing i18n loading ==="
+          
+          export SCRIPT_DIR="."
+          source lib/i18n.sh
+          i18n_init
+          i18n_load "en"
+          
+          # Test a few translations
+          if [ "$(_ HEADER_MAIN)" = "VPS Auto Deployment Tool" ]; then
+            echo "i18n load: OK"
+          else
+            echo "i18n load: FAILED"
+            exit 1
+          fi
