@@ -1,1 +1,75 @@
-# VPS 自动部署工具`n`n基于 Unix 哲学的极致解耦设计。`n`n## 目录结构`n`n````nvps-deploy/`n├── bin/                    # 可执行脚本 (每个只做一件事)`n│   ├── detect.sh          # 检测硬件`n│   ├── hostname.sh        # 生成主机名`n│   └── network.sh         # 检测网络`n├── lib/                   # 函数库`n│   ├── output.sh          # 输出函数`n│   ├── detect.sh          # 硬件检测函数`n│   ├── network.sh         # 网络检测函数`n│   └── template.sh        # 模板引擎`n├── templates/             # 模板文件`n│   ├── user-data.tpl      # Cloud-init 主配置`n│   ├── meta-data.tpl      # Meta-data`n│   └── nomad/`n│       ├── server.hcl.tpl # Nomad Server 配置`n│       └── client.hcl.tpl # Nomad Client 配置`n├── config/`n│   └── region-codes.conf  # 区域短码映射`n├── generate.sh             # 主入口`n└── README.md`n````n`n## 使用方法`n`n```bash`n# 克隆或下载脚本`ngit clone <repo>`ncd vps-deploy`n`n# 交互式生成配置并安装`n./generate.sh`n`n# 或单独使用各模块`nsource lib/output.sh`nsource lib/detect.sh`n`n# 检测硬件`n./bin/detect.sh`n`n# 检测网络`n./bin/network.sh`n````n`n## 依赖`n`n- Linux (bash)`n- cloud-init`n- openssl`n- curl`n`n## License`n`nMIT`n
+# DeployX - VPS Auto Deployment Tool
+
+Modular VPS deployment tool based on Unix philosophy.
+
+## Features
+
+- Hardware detection
+- Network detection
+- Hostname generation
+- Cloud-init integration
+- Nomad workload orchestration
+- **Internationalization (i18n)**: English & Chinese
+
+## Quick Start
+
+```bash
+git clone https://github.com/nimbus-spec/deployx.git
+cd deployx
+./generate.sh
+```
+
+## Project Structure
+
+```
+deployx/
+├── bin/                    # Executable scripts
+│   ├── detect.sh          # Hardware detection
+│   ├── hostname.sh        # Hostname generation
+│   └── network.sh         # Network detection
+├── lib/                   # Function libraries
+│   ├── output.sh          # Output functions
+│   ├── detect.sh          # Hardware detection lib
+│   ├── network.sh         # Network detection lib
+│   ├── template.sh        # Template engine
+│   └── i18n.sh            # Internationalization
+├── templates/             # Template files
+│   ├── user-data.tpl      # Cloud-init config
+│   ├── meta-data.tpl
+│   └── nomad/
+│       ├── server.hcl.tpl
+│       └── client.hcl.tpl
+├── config/
+│   └── region-codes.conf  # Region code mappings
+├── translations/            # i18n translations
+│   ├── en.sh              # English
+│   └── zh.sh              # Chinese
+├── generate.sh             # Main entry
+└── README.md
+```
+
+## Usage
+
+1. Run `./generate.sh`
+2. Select language (English/中文)
+3. Enter configuration
+4. Confirm and start installation
+
+## Internationalization
+
+The tool supports multiple languages. To add a new language:
+
+1. Copy `translations/en.sh` to `translations/{lang}.sh`
+2. Translate all strings in the `T[...]` array
+3. The tool auto-detects language from `LANG` environment variable
+
+## Dependencies
+
+- Linux (bash)
+- cloud-init
+- openssl
+- curl
+
+## License
+
+MIT
