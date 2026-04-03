@@ -1,5 +1,5 @@
 #!/bin/bash
-# generate.sh - VPS 自动部署配置生成器
+# generate.sh - VPS Auto Deployment Tool
 
 set -e
 
@@ -8,46 +8,79 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/lib/output.sh"
 source "$SCRIPT_DIR/lib/detect.sh"
 source "$SCRIPT_DIR/lib/network.sh"
+source "$SCRIPT_DIR/lib/i18n.sh"
 source "$SCRIPT_DIR/config/region-codes.conf"
+
+i18n_init
 
 DEFAULT_IMAGE="https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.raw"
 
+select_language() {
+    echo ""
+    echo "Select language / 选择语言:"
+    echo "  1) English"
+    echo "  2) 中文"
+    echo ""
+    read -p "Choice [1]: " choice
+    choice="${choice:-1}"
+    case "$choice" in
+        2|"zh")
+            i18n_load "zh"
+            ;;
+        *)
+            i18n_load "en"
+            ;;
+    esac
+}
+
+get_net_type_label() {
+    case "$NET_TYPE" in
+        v4) _ "NET_TYPE_V4" "IPv4" ;;
+        v6) _ "NET_TYPE_V6" "IPv6" ;;
+        dual) _ "NET_TYPE_DUAL" "Dual" ;;
+        nat) _ "NET_TYPE_NAT" "NAT" ;;
+        *) _ "NET_TYPE_UNKNOWN" "Unknown" ;;
+    esac
+}
+
 main() {
-    header "VPS 自动部署配置生成器"
+    select_language
     
-    section "用户配置"
+    header "$(_ HEADER_MAIN)"
     
-    read -p "Merchant ID (oracle/aws/hetzner/vultr): " MERCHANT
+    section "$(_ SECTION_CONFIG)"
+    
+    read -p "$(_ PROMPT_MERCHANT)" MERCHANT
     MERCHANT="${MERCHANT:-unknown}"
     
-    read -p "区域 (tokyo/frankfurt/newyork): " REGION
+    read -p "$(_ PROMPT_REGION)" REGION
     REGION="${REGION:-unknown}"
     
-    read -p "国家代码 (jp/de/us): " COUNTRY
+    read -p "$(_ PROMPT_COUNTRY)" COUNTRY
     COUNTRY="${COUNTRY:-us}"
     
-    read -p "Nomad 角色 [server]: " NOMAD_ROLE
+    read -p "$(_ PROMPT_NOMAD_ROLE)" NOMAD_ROLE
     NOMAD_ROLE="${NOMAD_ROLE:-server}"
     
-    read -p "SSH 端口 [22]: " SSH_PORT
+    read -p "$(_ PROMPT_SSH_PORT)" SSH_PORT
     SSH_PORT="${SSH_PORT:-22}"
     
-    read -p "SSH 公钥文件 [/root/.ssh/id_rsa.pub]: " SSH_KEY_FILE
+    read -p "$(_ PROMPT_SSH_KEY)" SSH_KEY_FILE
     SSH_KEY_FILE="${SSH_KEY_FILE:-/root/.ssh/id_rsa.pub}"
     
-    header "硬件检测"
-    info "CPU 核心数: $(detect_cpu_cores)"
-    info "内存: $(detect_memory_mb)MB"
-    info "磁盘: $(detect_disk_gb)GB"
+    header "$(_ SECTION_HARDWARE)"
+    info "$(_ INFO_CPU): $(detect_cpu_cores)"
+    info "$(_ INFO_MEMORY): $(detect_memory_mb)MB"
+    info "$(_ INFO_DISK): $(detect_disk_gb)GB"
     
-    header "网络检测"
+    header "$(_ SECTION_NETWORK)"
     local eth=$(get_default_interface)
-    info "网络接口: $eth"
+    info "$(_ INFO_NET_IFACE): $eth"
     
     source <($SCRIPT_DIR/bin/network.sh)
-    info "网络类型: $NET_TYPE"
-    info "公有 IPv4: ${PUBLIC_V4:-无}"
-    info "私有 IPv4: ${PRIVATE_V4:-无}"
+    info "$(_ INFO_NET_TYPE): $(get_net_type_label)"
+    info "$(_ INFO_PUB_IPV4): ${PUBLIC_V4:-$(_ STATUS_NONE)}"
+    info "$(_ INFO_PRIV_IPV4): ${PRIVATE_V4:-$(_ STATUS_NONE)}"
     
     local region_code="${REGION_CODES[$REGION]:-${REGION:0:3}}"
     region_code=$(echo "$region_code" | tr '[:upper:]' '[:lower:]')
@@ -55,41 +88,41 @@ main() {
     local rand8=$(head /dev/urandom 2>/dev/null | tr -dc 'a-z0-9' | head -c 8)
     local HOSTNAME="${COUNTRY}-${region_code}-${NET_TYPE}-${MERCHANT}-${rand8}"
     
-    section "SSH 配置"
+    section "$(_ SECTION_SSH)"
     if [[ -f "$SSH_KEY_FILE" ]]; then
         SSH_KEY=$(cat "$SSH_KEY_FILE")
-        info "SSH 公钥: 已加载"
+        info "$(_ INFO_SSH_KEY_LOADED)"
     else
-        warn "SSH 公钥文件不存在: $SSH_KEY_FILE"
-        read -p "手动输入 SSH 公钥: " SSH_KEY
+        warn "$(_ INFO_SSH_KEY_MISSING): $SSH_KEY_FILE"
+        read -p "$(_ INFO_SSH_KEY_MANUAL): " SSH_KEY
     fi
     
-    section "用户密码"
-    read -sp "设置 deploy 用户密码: " DEPLOY_PASS
+    section "$(_ SECTION_PASSWORD)"
+    read -sp "$(_ PROMPT_PASSWORD)" DEPLOY_PASS
     echo ""
     PASSWORD_HASH=$(openssl passwd -6 "$DEPLOY_PASS")
     
-    header "配置确认"
-    cat << 'EOF'
-  主机名: $HOSTNAME
-  Merchant: $MERCHANT
-  区域: $REGION (${region_code})
-  国家: $COUNTRY
-  网络类型: $NET_TYPE
-  Nomad 角色: $NOMAD_ROLE
-  SSH 端口: $SSH_PORT
+    header "$(_ SECTION_CONFIRM)"
+    cat << EOF
+  $(_ LABEL_HOSTNAME): $HOSTNAME
+  $(_ LABEL_MERCHANT): $MERCHANT
+  $(_ LABEL_REGION): $REGION (${region_code})
+  $(_ LABEL_COUNTRY): $COUNTRY
+  $(_ LABEL_NET_TYPE): $(get_net_type_label)
+  $(_ LABEL_NOMAD_ROLE): $NOMAD_ROLE
+  $(_ LABEL_SSH_PORT): $SSH_PORT
   
-  硬件:
-    CPU: $(detect_cpu_cores) 核心
-    内存: $(detect_memory_mb)MB
-    磁盘: $(detect_disk_gb)GB
+  $(_ LABEL_HARDWARE):
+    $(_ LABEL_CPU_CORES): $(detect_cpu_cores)
+    $(_ LABEL_MEMORY_MB): $(detect_memory_mb)MB
+    $(_ LABEL_DISK_GB): $(detect_disk_gb)GB
 EOF
     
     echo ""
-    read -p "确认开始安装? (yes/no): " confirm
-    [[ "$confirm" != "yes" ]] && exit 0
+    read -p "$(_ PROMPT_CONFIRM)" confirm
+    [[ "$confirm" != "$(_ YES)" ]] && exit 0
     
-    header "生成配置"
+    header "$(_ SECTION_GENERATING)"
     
     if [[ -n "$PUBLIC_V4" ]]; then
         NETWORK_CONFIG="      addresses:
@@ -197,13 +230,13 @@ RUNCMD
     cp "$SCRIPT_DIR/templates/meta-data.tpl" /tmp/seed/meta-data
     sed -i "s|{{ HOSTNAME }}|$HOSTNAME|g" /tmp/seed/meta-data
     
-    success "配置已生成到 /tmp/seed/"
+    success "$(_ INFO_CONFIG_GENERATED)"
     
     echo ""
-    read -p "是否开始 DD 安装? (yes/no): " start_install
-    [[ "$start_install" != "yes" ]] && exit 0
+    read -p "$(_ PROMPT_START_INSTALL)" start_install
+    [[ "$start_install" != "$(_ YES)" ]] && exit 0
     
-    info "开始安装 Debian..."
+    info "$(_ INFO_INSTALL_START)"
     cd /tmp
     bash reinstall.sh dd --img "$DEFAULT_IMAGE" --cloud-data "file:///tmp/seed/"
 }
