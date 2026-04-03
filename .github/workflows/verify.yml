@@ -135,6 +135,7 @@ jobs:
 
       - name: Test i18n loading
         run: |
+          set -x
           echo "=== Testing i18n loading ==="
           
           export SCRIPT_DIR="."
@@ -142,14 +143,13 @@ jobs:
           ls -la
           ls -la translations/ || echo "translations not found"
           
-          source lib/i18n.sh
-          echo "i18n_init result: $(i18n_init; echo $?)"
-          echo "i18n_load result: $(i18n_load en; echo $?)"
+          source lib/i18n.sh || { echo "Failed to source i18n.sh"; exit 1; }
+          i18n_init
+          i18n_load en
           
           echo "I18N_LOADED: $I18N_LOADED"
           echo "T[HEADER_MAIN]: ${T[HEADER_MAIN]}"
           
-          # Test a few translations
           RESULT=$(_ HEADER_MAIN)
           echo "Translation result: '$RESULT'"
           
