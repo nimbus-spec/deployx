@@ -1,1 +1,40 @@
-#!/bin/bash`n# bin/detect.sh - 检测硬件配置`n`nset -e`n`nSCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"`nPROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"`n`nsource "$PROJECT_DIR/lib/output.sh"`n`ndetect_cpu_cores() {`n    nproc 2>/dev/null || grep -c ^processor /proc/cpuinfo || echo "1"`n}`n`ndetect_memory_mb() {`n    free -m 2>/dev/null | awk '/^Mem:/{print int($2)}' || echo "1024"`n}`n`ndetect_disk_gb() {`n    df -BG / 2>/dev/null | awk 'NR==2 {print int($2)}' | tr -d 'G' || echo "10"`n}`n`nmain() {`n    header "硬件检测"`n    `n    CPU=$(detect_cpu_cores)`n    MEM=$(detect_memory_mb)`n    DISK=$(detect_disk_gb)`n    `n    info "CPU 核心数: $CPU"`n    info "内存: ${MEM}MB"`n    info "磁盘: ${DISK}GB"`n    `n    echo ""`n    echo "CPU_CORES=$CPU"`n    echo "MEMORY_MB=$MEM"`n    echo "DISK_GB=$DISK"`n}`n`nmain "$@"`n
+#!/bin/bash
+# bin/detect.sh - Hardware detection
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+source "$PROJECT_DIR/lib/output.sh"
+
+detect_cpu_cores() {
+    nproc 2>/dev/null || grep -c ^processor /proc/cpuinfo || echo "1"
+}
+
+detect_memory_mb() {
+    free -m 2>/dev/null | awk '/^Mem:/{print int($2)}' || echo "1024"
+}
+
+detect_disk_gb() {
+    df -BG / 2>/dev/null | awk 'NR==2 {print int($2)}' | tr -d 'G' || echo "10"
+}
+
+main() {
+    header "Hardware Detection"
+    
+    CPU=$(detect_cpu_cores)
+    MEM=$(detect_memory_mb)
+    DISK=$(detect_disk_gb)
+    
+    info "CPU cores: $CPU"
+    info "Memory: ${MEM}MB"
+    info "Disk: ${DISK}GB"
+    
+    echo ""
+    echo "CPU_CORES=$CPU"
+    echo "MEMORY_MB=$MEM"
+    echo "DISK_GB=$DISK"
+}
+
+main "$@"
