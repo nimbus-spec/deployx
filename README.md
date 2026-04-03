@@ -17,7 +17,15 @@ Modular VPS deployment tool based on Unix philosophy.
 
 ## Quick Start
 
-### Option 1: Clone and Run
+### Option 1: Download and Run (Recommended for interactive use)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/nimbus-spec/deployx/main/deployx.sh -o deployx.sh
+chmod +x deployx.sh
+./deployx.sh
+```
+
+### Option 2: Clone Repository
 
 ```bash
 git clone https://github.com/nimbus-spec/deployx.git
@@ -25,17 +33,7 @@ cd deployx
 ./generate.sh
 ```
 
-### Option 2: One-Line Install (Recommended)
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/nimbus-spec/deployx/main/deployx.sh | bash
-```
-
-Or with wget:
-
-```bash
-wget -qO- https://raw.githubusercontent.com/nimbus-spec/deployx/main/deployx.sh | bash
-```
+> **Note**: `curl ... | bash` does NOT work for interactive scripts because `read` commands require a TTY. You must download the script first, then execute it.
 
 ## Supported Operating Systems
 
@@ -68,7 +66,7 @@ Uses the reinstall script to dump a raw disk image directly. Recommended for:
 
 ## Usage
 
-1. Run `curl -fsSL ... | bash` or `./generate.sh`
+1. Download and run `deployx.sh`
 2. Select language (English/ä¸­æ–‡)
 3. Select operating system
 4. Choose installation mode (Native/DD)
@@ -81,13 +79,6 @@ Uses the reinstall script to dump a raw disk image directly. Recommended for:
    - SSH port and key
    - **Tailscale VPN** (optional)
 7. Confirm and start installation
-
-### Custom DD Image Example
-
-```
-Select OS: 9 (Custom DD Image)
-Custom DD image URL: https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.raw
-```
 
 ## Project Structure
 
@@ -111,7 +102,7 @@ deployx/
 â”‚   â”œâ”€â”€ en.sh              # English
 â”‚   â””â”€â”€ zh.sh              # Chinese
 â”œâ”€â”€ generate.sh            # Main entry
-â”œâ”€â”€ deployx.sh             # One-line installer
+â”œâ”€â”€ deployx.sh             # One-line installer (downloads all files)
 â””â”€â”€ README.md
 ```
 
@@ -135,15 +126,6 @@ Accept routes from tailnet? (yes/no): yes
 - Auth key authentication (no interactive login required)
 - Optional route acceptance for subnet router mode
 - Connects to your tailnet immediately on first boot
-
-### Auth Key
-
-Generate an auth key from [Tailscale admin console](https://login.tailscale.com/admin/settings/keys):
-
-1. Go to Settings > Keys
-2. Click "Generate auth key"
-3. Set reusable option if needed
-4. Copy the key (starts with `tskey-auth-`)
 
 ## Nomad Integration
 
@@ -175,12 +157,6 @@ The tool supports multiple languages. To add a new language:
 Format: `{country}-{region}-{network_type}-{merchant}-{random8}`
 
 Example: `jp-tyo-v4-conoha-a1b2c3d4`
-
-- `jp` - Country code
-- `tyo` - Region code (tokyo)
-- `v4` - Network type (v4/v6/dual/nat)
-- `conoha` - Merchant/provider name
-- `a1b2c3d4` - Random 8-character string
 
 ## Dependencies
 
