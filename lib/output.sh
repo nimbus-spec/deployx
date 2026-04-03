@@ -1,5 +1,5 @@
 #!/bin/bash
-# lib/output.sh - 输出函数库
+# lib/output.sh - Output functions
 
 export COLOR_RESET='\033[0m'
 export COLOR_BOLD='\033[1m'
@@ -45,7 +45,7 @@ section() {
 }
 
 confirm() {
-    local prompt="${1:-继续?}"
+    local prompt="${1:-Continue?}"
     local default="${2:-no}"
     
     if [[ "$default" == "yes" ]]; then
