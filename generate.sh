@@ -68,6 +68,20 @@ main() {
     read -p "$(_ PROMPT_SSH_KEY)" SSH_KEY_FILE
     SSH_KEY_FILE="${SSH_KEY_FILE:-/root/.ssh/id_rsa.pub}"
     
+    section "$(_ SECTION_TAILSCALE)"
+    read -p "$(_ PROMPT_TAILSCALE_ENABLED)" TAILSCALE_ENABLED
+    TAILSCALE_ENABLED="${TAILSCALE_ENABLED:-no}"
+    
+    if [[ "$TAILSCALE_ENABLED" =~ ^(yes|y)$ ]]; then
+        read -p "$(_ PROMPT_TAILSCALE_AUTHKEY)" TAILSCALE_AUTH_KEY
+        TAILSCALE_AUTH_KEY="${TAILSCALE_AUTH_KEY:-}"
+        read -p "$(_ PROMPT_TAILSCALE_ACCEPT_ROUTES)" TAILSCALE_ACCEPT_ROUTES
+        TAILSCALE_ACCEPT_ROUTES="${TAILSCALE_ACCEPT_ROUTES:-no}"
+    else
+        TAILSCALE_AUTH_KEY=""
+        TAILSCALE_ACCEPT_ROUTES="no"
+    fi
+    
     header "$(_ SECTION_HARDWARE)"
     info "$(_ INFO_CPU): $(detect_cpu_cores)"
     info "$(_ INFO_MEMORY): $(detect_memory_mb)MB"
@@ -111,6 +125,7 @@ main() {
   $(_ LABEL_NET_TYPE): $(get_net_type_label)
   $(_ LABEL_NOMAD_ROLE): $NOMAD_ROLE
   $(_ LABEL_SSH_PORT): $SSH_PORT
+  $(_ LABEL_TAILSCALE): $(if [[ "$TAILSCALE_ENABLED" =~ ^(yes|y)$ ]]; then echo "$(_ STATUS_ENABLED)"; else echo "$(_ STATUS_DISABLED)"; fi)
   
   $(_ LABEL_HARDWARE):
     $(_ LABEL_CPU_CORES): $(detect_cpu_cores)
@@ -188,6 +203,20 @@ NOMADCMD
     )
     fi
     
+    local tailscale_runcmd=""
+    if [[ "$TAILSCALE_ENABLED" =~ ^(yes|y)$ ]] && [[ -n "$TAILSCALE_AUTH_KEY" ]]; then
+        local accept_routes_flag=""
+        if [[ "$TAILSCALE_ACCEPT_ROUTES" =~ ^(yes|y)$ ]]; then
+            accept_routes_flag="--accept-routes"
+        fi
+        tailscale_runcmd=$(cat << TAILSCALECMD
+  - |
+    curl -fsSL https://tailscale.com/install.sh | sh
+    tailscale up --authkey=AUTHKEY_PLACEHOLDER $accept_routes_flag
+TAILSCALECMD
+        tailscale_runcmd="${tailscale_runcmd/AUTHKEY_PLACEHOLDER/$TAILSCALE_AUTH_KEY}"
+    fi
+    
     local kernel_tuning=$(cat << 'KERNEL'
   - |
     cat > /etc/sysctl.d/99-tuning.conf << 'SYSCTL'
@@ -211,6 +240,7 @@ KERNEL
   - timedatectl set-timezone UTC
 $kernel_tuning
 $nomad_runcmd
+$tailscale_runcmd
   - cloud-init clean --logs
 RUNCMD
 )
