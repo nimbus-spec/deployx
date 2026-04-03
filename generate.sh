@@ -1,6 +1,10 @@
 #!/bin/bash
 # generate.sh - VPS Auto Deployment Tool
 
+# Force UTF-8 encoding to prevent garbled Chinese characters
+export LC_ALL=C.UTF-8
+export LANG=C.UTF-8
+
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -38,9 +42,9 @@ OS_VERSIONS=(
 
 select_language() {
     echo ""
-    echo "Select language / é€‰æ‹©è¯­è¨€:"
+    echo "Select language / Ã©â‚¬â€°Ã¦â€¹Â©Ã¨Â¯Â­Ã¨Â¨â‚¬:"
     echo "  1) English"
-    echo "  2) ä¸­æ–‡"
+    echo "  2) Ã¤Â¸Â­Ã¦â€“â€¡"
     echo ""
     read -p "Choice [1]: " choice
     choice="${choice:-1}"
@@ -444,3 +448,4 @@ iface eth0 inet static
 }
 
 main "$@"
+
