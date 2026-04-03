@@ -1,1 +1,66 @@
-#!/bin/bash`n# lib/i18n.sh - Internationalization library`n`n# Default language (can be overridden)`nexport LANG="${LANG:-en}"`n`n# Load translations`ni18n_load() {`n    local lang="${1:-en}"`n    local trans_dir="$(dirname "$0")/../translations"`n    local trans_file="$trans_dir/${lang}.sh"`n    `n    if [[ -f "$trans_file" ]]; then`n        source "$trans_file"`n    else`n        source "$trans_dir/en.sh"`n    fi`n}`n`n# Translate function`n_() {`n    local key="$1"`n    shift`n    local default="$*"`n    `n    if [[ -n "${T[$key]:-}" ]]; then`n        printf "%s" "${T[$key]}"`n    elif [[ -n "$default" ]]; then`n        printf "%s" "$default"`n    else`n        printf "%s" "$key"`n    fi`n}`n`n# Alias for translate`ntranslate() { _ "$@"; }`n`n# Get available languages`ni18n_list() {`n    local trans_dir="$(dirname "$0")/../translations"`n    if [[ -d "$trans_dir" ]]; then`n        ls "$trans_dir"/*.sh 2>/dev/null | sed 's/.*\///;s/\.sh$//' | sort`n    fi`n}`n`n# Set language from environment or auto-detect`ni18n_init() {`n    local lang="${LANG:-en}"`n    `n    # Auto-detect from LC_ALL, LC_MESSAGES, LANG`n    if [[ -z "$lang" ]] || [[ "$lang" == "C" ]]; then`n        lang="en"`n    fi`n    `n    # Extract language code (en, zh, ja, etc.)`n    lang="${lang%%_*}"`n    lang="${lang%%.*}"`n    `n    # Check if translation exists`n    local trans_dir="$(dirname "$0")/../translations"`n    if [[ -f "$trans_dir/${lang}.sh" ]]; then`n        i18n_load "$lang"`n    else`n        i18n_load "en"`n    fi`n}`n`n# Format string with arguments`nfmt() {`n    local key="$1"`n    shift`n    local fmt`n    `n    fmt=$(translate "$key")`n    if [[ $# -gt 0 ]]; then`n        printf "$fmt" "$@"`n    else`n        printf "%s" "$fmt"`n    fi`n}`n
+#!/bin/bash
+# lib/i18n.sh - Internationalization library
+
+I18N_DEFAULT_LANG="en"
+I18N_CURRENT_LANG="en"
+I18N_LOADED=0
+
+declare -A T
+
+i18n_init() {
+    if [[ -d "$SCRIPT_DIR/translations" ]]; then
+        return 0
+    fi
+    return 1
+}
+
+i18n_load() {
+    local lang="${1:-$I18N_DEFAULT_LANG}"
+    local lang_file="$SCRIPT_DIR/translations/${lang}.sh"
+    
+    if [[ ! -f "$lang_file" ]]; then
+        echo "[WARN] Translation file not found: $lang_file" >&2
+        return 1
+    fi
+    
+    unset T
+    declare -A T
+    
+    source "$lang_file"
+    I18N_CURRENT_LANG="$lang"
+    I18N_LOADED=1
+}
+
+_() {
+    local key="$1"
+    shift
+    local default="${1:-}"
+    
+    if [[ "$I18N_LOADED" -eq 0 ]]; then
+        echo "$default"
+        return
+    fi
+    
+    local value="${T[$key]}"
+    if [[ -n "$value" ]]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$default"
+    fi
+}
+
+i18n_current_lang() {
+    echo "$I18N_CURRENT_LANG"
+}
+
+i18n_available_langs() {
+    local langs=()
+    if [[ -d "$SCRIPT_DIR/translations" ]]; then
+        for f in "$SCRIPT_DIR/translations/"*.sh; do
+            if [[ -f "$f" ]]; then
+                langs+=("$(basename "$f" .sh)")
+            fi
+        done
+    fi
+    echo "${langs[@]}"
+}
