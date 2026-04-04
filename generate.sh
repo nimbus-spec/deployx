@@ -63,12 +63,12 @@ select_language() {
     echo "========================================"
     echo ""
     echo "  1) English"
-    echo "  2) Chinese"
+    echo "  2) Chinese / Zhongwen"
     echo ""
     
     local valid=0
     while [[ $valid -eq 0 ]]; do
-        echo -n "Select language / 选择语言 [1]: "
+        echo -n "Select language [1]: "
         read -r choice
         choice="${choice:-1}"
         
