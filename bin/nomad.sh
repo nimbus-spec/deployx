@@ -24,19 +24,18 @@ HOSTNAME=""
 OUTPUT_DIR="/etc/nomad.d"
 RUNCMD_MODE="no"
 
-# Check for --runcmd first (before getopts)
+# Check for --runcmd and filter args
+RUNCMD_MODE="no"
+CLEAN_ARGS=()
 for arg in "$@"; do
     if [[ "$arg" == "--runcmd" ]]; then
         RUNCMD_MODE="yes"
-        break
+    else
+        CLEAN_ARGS+=("$arg")
     fi
 done
 
-# Filter out --runcmd for getopts
-ARGS=()
-for arg in "$@"; do
-    [[ "$arg" != "--runcmd" ]] && ARGS+=("$arg")
-done
+set -- "${CLEAN_ARGS[@]}"
 
 while getopts "r:n:o:h" opt; do
     case $opt in
