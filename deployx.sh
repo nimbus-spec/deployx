@@ -5,7 +5,7 @@
 # This script downloads all DeployX components and runs the wizard.
 # It ensures UTF-8 encoding and proper execution environment.
 
-set -euo pipefail
+set -uo pipefail
 
 REPO="nimbus-spec/deployx"
 BRANCH="${BRANCH:-main}"
