@@ -91,6 +91,7 @@ download_all() {
     download_file "bin/tailscale.sh" "bin/tailscale.sh" || return 1
     download_file "bin/render.sh" "bin/render.sh" || return 1
     download_file "bin/install.sh" "bin/install.sh" || return 1
+    download_file "bin/execute.sh" "bin/execute.sh" || return 1
     download_file "lib/output.sh" "lib/output.sh" || return 1
     download_file "lib/i18n.sh" "lib/i18n.sh" || return 1
     download_file "templates/user-data.tpl" "templates/user-data.tpl" || return 1
