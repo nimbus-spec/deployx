@@ -1,6 +1,8 @@
 #!/bin/bash
 # translations/zh.sh - Chinese translations
 
+declare -gA T
+
 T[HEADER_MAIN]="VPS zidonghua bushu gongju"
 T[HEADER_SUCCESS]="Anzhuang wancheng"
 T[HEADER_ERROR]="Cuowu"
