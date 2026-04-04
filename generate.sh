@@ -5,7 +5,7 @@
 # Interactive wizard that generates cloud-init configuration for VPS deployment.
 # Follows Unix philosophy: does one thing well, outputs to stdout.
 
-set -euo pipefail
+set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BIN_DIR="$SCRIPT_DIR/bin"
