@@ -129,22 +129,37 @@ main() {
     check_dependencies
     download_all
     
-    # Check if --execute flag is present
+    # Parse global flags
     local execute_mode=no
     local args=()
     for arg in "$@"; do
-        if [[ "$arg" == "--execute" ]]; then
-            execute_mode=yes
-        else
-            args+=("$arg")
-        fi
+        case "$arg" in
+            --execute) execute_mode=yes ;;
+            --help) show_help; exit 0 ;;
+            --version) echo "$VERSION"; exit 0 ;;
+            *) args+=("$arg") ;;
+        esac
     done
     
     if [[ "$execute_mode" == "yes" ]]; then
         run_execute "${args[@]}"
     else
-        run_generate "$@"
+        run_generate "${args[@]}"
     fi
+}
+
+show_help() {
+    cat << EOF
+Usage: $0 [options]
+Options:
+    --execute   Execute installation after generating config
+    --help      Show this help message
+    --version   Show version information
+    
+Examples:
+    $0                     # Generate config only (interactive)
+    $0 --execute           # Generate config and execute installation
+EOF
 }
 
 main "$@"
