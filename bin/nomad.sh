@@ -1,48 +1,24 @@
 #!/bin/bash
 # bin/nomad.sh - Nomad configuration generator
-# Usage: ./bin/nomad.sh -r ROLE -n HOSTNAME [-o OUTPUT_DIR] [--runcmd]
-# Output: Nomad configuration files
-
-set -e
-
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-NOMAD_VERSION="${NOMAD_VERSION:-1.7.6}"
-
-usage() {
-    cat << EOF
-Usage: $0 [options]
-Options:
-    -r ROLE        Role: server, client, server+client
-    -n HOSTNAME   Nomad hostname
-    -o DIR        Output directory (default: /etc/nomad.d)
-    --runcmd      Output runcmd format
-    -h            Show this help
-EOF
-}
+# Usage: ./bin/nomad.sh -r ROLE -n HOSTNAME [--runcmd]
 
 ROLE=""
 HOSTNAME=""
-OUTPUT_DIR="/etc/nomad.d"
 RUNCMD_MODE="no"
 
-for arg in "$@"; do
-    case "$arg" in
-        --runcmd) RUNCMD_MODE="yes" ;;
-        -r|-n|-o) shift ;;
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -r) ROLE="$2"; shift 2 ;;
+        -n) HOSTNAME="$2"; shift 2 ;;
+        --runcmd) RUNCMD_MODE="yes"; shift ;;
+        *) shift ;;
     esac
 done
 
-while getopts "r:n:o:h" opt; do
-    case $opt in
-        r) ROLE="$OPTARG" ;;
-        n) HOSTNAME="$OPTARG" ;;
-        o) OUTPUT_DIR="$OPTARG" ;;
-        h) usage; exit 0 ;;
-    esac
-done
-
-[[ -z "$ROLE" ]] && { echo "Error: -r ROLE required"; exit 1; }
-[[ -z "$HOSTNAME" ]] && { echo "Error: -n HOSTNAME required"; exit 1; }
+if [[ -z "$ROLE" ]] || [[ -z "$HOSTNAME" ]]; then
+    echo "Usage: $0 -r ROLE -n HOSTNAME [--runcmd]" >&2
+    exit 1
+fi
 
 output_runcmd() {
     echo "  - |"
@@ -64,21 +40,25 @@ output_runcmd() {
     echo "bind_addr = \"0.0.0.0\""
     echo "ports { http = 4646 rpc = 4647 serf = 4648 }"
     
-    if [[ "$ROLE" == "server" ]] || [[ "$ROLE" == "server+client" ]]; then
-        echo ""
-        echo "server {"
-        echo "  enabled = true"
-        echo "  bootstrap_expect = 1"
-        echo "}"
-    fi
+    case "$ROLE" in
+        server|server+client)
+            echo ""
+            echo "server {"
+            echo "  enabled = true"
+            echo "  bootstrap_expect = 1"
+            echo "}"
+            ;;
+    esac
     
-    if [[ "$ROLE" == "client" ]] || [[ "$ROLE" == "server+client" ]]; then
-        echo ""
-        echo "client {"
-        echo "  enabled = true"
-        echo "  servers = [\"127.0.0.1:4647\"]"
-        echo "}"
-    fi
+    case "$ROLE" in
+        client|server+client)
+            echo ""
+            echo "client {"
+            echo "  enabled = true"
+            echo "  servers = [\"127.0.0.1:4647\"]"
+            echo "}"
+            ;;
+    esac
     
     echo ""
     echo "telemetry {"
