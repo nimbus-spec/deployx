@@ -1,178 +1,106 @@
-# DeployX - VPS Auto Deployment Tool
+# DeployX - CNCF-Aligned VPS Deployment Automation
 
-Modular VPS deployment tool based on Unix philosophy.
+DeployX is a modular, Unix philosophy-inspired tool for automated VPS deployment with:
+- Cloud-init based OS installation via DD (using bin456789/reinstall script)
+- Nomad workload orchestration (server/client/server+client modes)
+- Tailscale VPN integration for secure networking  
+- Internationalization (English/Chinese)
+- Hostname convention: `{country}-{region}-{network_type}-{merchant}-{random8}`
 
 ## Features
 
-- **OS Selection**: Choose from multiple Linux distributions
-- **Custom DD Image**: Support for custom disk images
-- Hardware detection
-- Network detection (IPv4/IPv6/Dual-Stack/NAT)
-- Hostname generation: `{country}-{region}-{network_type}-{merchant}-{random8}`
-- Cloud-init integration
-- Nomad workload orchestration
-- **Tailscale VPN** integration for cluster networking
-- **Internationalization (i18n)**: English & Chinese
-- Kernel tuning (BBR, TCP optimization)
+### 🔧 Modular Design (Unix Philosophy)
+Each component is a single-purpose tool:
+- `bin/detect.sh` - Hardware detection (CPU/RAM/Disk)
+- `bin/network.sh` - Network detection (IP/interfaces)
+- `bin/location.sh` - Geolocation via IP
+- `bin/hostname.sh` - Hostname generation
+- `bin/nomad.sh` - Nomad configuration generator
+- `bin/tailscale.sh` - Tailscale configuration
+- `bin/render.sh` - Template rendering ({{VAR}} substitution)
+- `bin/execute.sh` - Installation executor
+- `generate.sh` - Interactive configuration wizard
 
-## Quick Start
+### 🚀 Usage
 
-### Option 1: Download and Run (Recommended for interactive use)
-
+#### 1. Generate Configuration Only
 ```bash
-curl -fsSL https://raw.githubusercontent.com/nimbus-spec/deployx/main/deployx.sh -o deployx.sh
-chmod +x deployx.sh
-./deployx.sh
+curl -fsSL "https://raw.githubusercontent.com/nimbus-spec/deployx/main/deployx.sh" -o deployx.sh && chmod +x deployx.sh && ./deployx.sh
 ```
 
-### Option 2: Clone Repository
-
+#### 2. Generate and Execute Installation
 ```bash
-git clone https://github.com/nimbus-spec/deployx.git
-cd deployx
-./generate.sh
+./deployx.sh --execute
 ```
 
-> **Note**: `curl ... | bash` does NOT work for interactive scripts because `read` commands require a TTY. You must download the script first, then execute it.
+#### 3. Unix-Style Composition
+```bash
+# Generate config to file
+./generate.sh > cloud-config.yaml
 
-## Supported Operating Systems
-
-| OS | Versions | Install Mode |
-|----|----------|-------------|
-| Debian | 12, 13 | Native / DD |
-| Ubuntu | 20.04, 22.04, 24.04 | Native / DD |
-| Alpine | 3.20, 3.21, 3.22 | Native / DD |
-| CentOS Stream | 9, 10 | Native / DD |
-| Rocky Linux | 8, 9, 10 | Native / DD |
-| AlmaLinux | 8, 9, 10 | Native / DD |
-| Fedora | 42, 43 | Native / DD |
-| Custom DD Image | Any URL | DD only |
-
-## Installation Modes
-
-### Native Install
-
-Uses the reinstall script's native installation to install the selected OS directly from official mirrors. Recommended for:
-- Fresh installations
-- Systems requiring full disk encryption
-- Wanting latest OS versions automatically
-
-### DD (Disk Dump)
-
-Uses the reinstall script to dump a raw disk image directly. Recommended for:
-- Using custom/pre-configured images
-- Deploying Windows images
-- Preserving specific system configurations
-
-## Usage
-
-1. Download and run `deployx.sh`
-2. Select language (English/ä¸­æ–‡)
-3. Select operating system
-4. Choose installation mode (Native/DD)
-5. If using DD, enter the custom image URL
-6. Enter configuration:
-   - Merchant/provider name
-   - Region (e.g., tokyo, singapore)
-   - Country code
-   - Nomad role (server/client)
-   - SSH port and key
-   - **Tailscale VPN** (optional)
-7. Confirm and start installation
-
-## Project Structure
-
-```
-deployx/
-â”œâ”€â”€ bin/                    # Executable scripts
-â”‚   â”œâ”€â”€ detect.sh          # Hardware detection
-â”‚   â”œâ”€â”€ hostname.sh        # Hostname generation
-â”‚   â””â”€â”€ network.sh         # Network detection
-â”œâ”€â”€ lib/                   # Function libraries
-â”‚   â”œâ”€â”€ output.sh          # Output functions
-â”‚   â”œâ”€â”€ detect.sh          # Hardware detection lib
-â”‚   â”œâ”€â”€ network.sh         # Network detection lib
-â”‚   â””â”€â”€ i18n.sh            # Internationalization
-â”œâ”€â”€ templates/             # Template files
-â”‚   â”œâ”€â”€ user-data.tpl      # Cloud-init config
-â”‚   â””â”€â”€ meta-data.tpl
-â”œâ”€â”€ config/
-â”‚   â””â”€â”€ region-codes.conf  # Region code mappings
-â”œâ”€â”€ translations/          # i18n translations
-â”‚   â”œâ”€â”€ en.sh              # English
-â”‚   â””â”€â”€ zh.sh              # Chinese
-â”œâ”€â”€ generate.sh            # Main entry
-â”œâ”€â”€ deployx.sh             # One-line installer (downloads all files)
-â””â”€â”€ README.md
+# Execute with external cloud-init data  
+./execute.sh --dd --img "https://example.com/image.raw" --cloud-data ./cloud-data
 ```
 
-## Tailscale Integration
+### 🌐 Configuration Options
 
-DeployX supports automatic Tailscale VPN setup for cluster networking.
+During the interactive wizard, you'll configure:
+- **Language**: English or 中文
+- **Provider/Merchant**: Your VPS provider (aws, digitalocean, vultr, etc.)
+- **SSH Key**: For secure access
+- **SSH Port**: Default 22
+- **Nomad Role**: None, Server, Client, or Server+Client
+- **Tailscale**: Optional VPN integration
+- **Installation Mode**: 
+  - DD Mode: Direct disk image URL
+  - Native Mode: OS reinstall (Debian/Ubuntu/Alpine/etc.)
 
-### Configuration
-
-During deployment, you can enable Tailscale:
+### 🏗️ Architecture
 
 ```
-Enable Tailscale VPN? (yes/no): yes
-Tailscale auth key: tskey-auth-xxxxx...
-Accept routes from tailnet? (yes/no): yes
+deployx.sh          # Bootstrap (downloads all components)
+generate.sh         # Interactive config generator → stdout
+bin/execute.sh      # Installation executor  
+bin/*.sh            # Single-purpose detection/tools
+lib/i18n.sh         # Internationalization library
+lib/output.sh       # Formatted output functions
+templates/          # Cloud-init templates
+translations/       # Language files (en.sh, zh.sh)
 ```
 
-### Features
+### 🔐 Security Features
+- SSH key authentication only (no passwords)
+- Root login disabled
+- Custom SSH port configurable
+- Firewall-recommended settings in generated config
+- Nomad runs as unprivileged user
+- TLS encryption for Nomad telemetry
 
-- Automatic installation via official Tailscale script
-- Auth key authentication (no interactive login required)
-- Optional route acceptance for subnet router mode
-- Connects to your tailnet immediately on first boot
+### 📋 Generated Cloud-Init Includes
+- User creation with sudo privileges
+- SSH hardening (no root login, key-only auth)
+- Nomad installation and service setup
+- Tailscale connection (if enabled)
+- System updates and basic packages
+- Automatic reboot on completion
 
-## Nomad Integration
+### 🐳 CNCF Alignment
+- Uses Nomad (CNCF graduated project) for orchestration
+- Declarative, immutable infrastructure approach
+- API-driven design (GitHub CLI for all operations)
+- Observable outputs and structured logging
 
-DeployX automatically sets up HashiCorp Nomad:
+### 📝 Requirements
+- bash
+- curl
+- Core utilities (grep, sed, awk, etc.) - available in most Linux distributions
 
-### Server Mode
+### 🛡️ License
+MIT License - see LICENSE file
 
-- Downloads and installs latest Nomad release
-- Creates systemd service
-- Configures `server.hcl` with auto-detected hostname
-- Enables Prometheus metrics endpoint
+### 👥 Contributing
+See CONTRIBUTING.md for details on submitting patches and following our Contributor Covenant Code of Conduct.
 
-### Client Mode
+---
 
-- Installs Nomad client
-- Configures for workload scheduling
-- Connects to server based on configuration
-
-## Internationalization
-
-The tool supports multiple languages. To add a new language:
-
-1. Copy `translations/en.sh` to `translations/{lang}.sh`
-2. Translate all strings in the `T[...]` associative array
-3. Add case in `select_language()` function (optional)
-
-## Hostname Convention
-
-Format: `{country}-{region}-{network_type}-{merchant}-{random8}`
-
-Example: `jp-tyo-v4-conoha-a1b2c3d4`
-
-## Dependencies
-
-### Runtime
-
-- Linux (bash)
-- cloud-init
-- openssl
-- curl or wget
-- ip (iproute2)
-
-### Optional
-
-- Tailscale (if VPN enabled)
-- Nomad (if server/client role selected)
-
-## License
-
-MIT
+**DeployX** - Automate your VPS deployment with cloud-native tools and Unix philosophy simplicity.
