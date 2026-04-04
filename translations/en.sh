@@ -1,6 +1,8 @@
 #!/bin/bash
 # translations/en.sh - English translations
 
+declare -gA T
+
 T[HEADER_MAIN]="VPS Auto Deployment Tool"
 T[HEADER_SUCCESS]="Installation Complete"
 T[HEADER_ERROR]="Error"
