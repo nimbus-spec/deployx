@@ -66,41 +66,30 @@ INSTALL
 }
 
 generate_server_config() {
-    cat << CONFIG
-name = "HOSTNAME_PLACEHOLDER"
-datacenter = "dc1"
-region = "global"
-data_dir = "/opt/nomad/data"
-bind_addr = "0.0.0.0"
-ports { http = 4646 rpc = 4647 serf = 4648 }
-CONFIG
-
+    printf 'name = "HOSTNAME_PLACEHOLDER"\n'
+    printf 'datacenter = "dc1"\n'
+    printf 'region = "global"\n'
+    printf 'data_dir = "/opt/nomad/data"\n'
+    printf 'bind_addr = "0.0.0.0"\n'
+    printf 'ports { http = 4646 rpc = 4647 serf = 4648 }\n'
+    
     if [[ "$ROLE" == "server" ]] || [[ "$ROLE" == "server+client" ]]; then
-        cat << CONFIG
-
-server {
-  enabled = true
-  bootstrap_expect = 1
-}
-CONFIG
+        printf '\nserver {\n'
+        printf '  enabled = true\n'
+        printf '  bootstrap_expect = 1\n'
+        printf '}\n'
     fi
-
+    
     if [[ "$ROLE" == "client" ]] || [[ "$ROLE" == "server+client" ]]; then
-        cat << CONFIG
-
-client {
-  enabled = true
-  servers = ["127.0.0.1:4647"]
-}
-CONFIG
+        printf '\nclient {\n'
+        printf '  enabled = true\n'
+        printf '  servers = ["127.0.0.1:4647"]\n'
+        printf '}\n'
     fi
-
-    cat << CONFIG
-
-telemetry {
-  prometheus_metrics = true
-}
-CONFIG
+    
+    printf '\ntelemetry {\n'
+    printf '  prometheus_metrics = true\n'
+    printf '}\n'
 }
 
 generate_systemd_service() {
@@ -135,9 +124,9 @@ output_nomad_config() {
         echo "    NOMADCFG"
         echo ""
         echo "  - |"
-        echo "    cat > /etc/systemd/system/nomad.service << 'SYSTEMD'"
+        echo "    cat > /etc/systemd/system/nomad.service << 'NOMADSVC'"
         generate_systemd_service
-        echo "    SYSTEMD"
+        echo "    NOMADSVC"
         echo ""
         echo "  - systemctl daemon-reload"
         echo "  - systemctl enable nomad"
