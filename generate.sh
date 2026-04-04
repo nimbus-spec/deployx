@@ -29,6 +29,7 @@ parse_args() {
         case "$1" in
             --lang) LANG="$2"; shift 2 ;;
             --output) OUTPUT_FILE="$2"; shift 2 ;;
+            --execute) EXECUTE_MODE="yes"; shift ;;
             -h|--help) usage; exit 0 ;;
             *) shift ;;
         esac
@@ -254,7 +255,43 @@ main() {
     fi
     
     echo ""
-    echo "[INFO] Configuration generated."
+    
+    if [[ "$EXECUTE_MODE" == "yes" ]]; then
+        echo "[INFO] Starting installation..."
+        download_and_execute "$config"
+    else
+        echo "[INFO] Configuration generated."
+    fi
+}
+
+download_and_execute() {
+    local config="$1"
+    local config_file="/tmp/user-data.$$"
+    echo "$config" > "$config_file"
+    
+    header "$(t INSTALL_START "Starting Installation...")"
+    
+    info "Downloading reinstall script..."
+    curl -fsSL https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh -o /tmp/reinstall.sh
+    chmod +x /tmp/reinstall.sh
+    
+    info "Preparing cloud-init data..."
+    local cloud_data="/tmp/cloud-data.$$"
+    mkdir -p "$cloud_data"
+    cp "$config_file" "$cloud_data/user-data"
+    echo "instance-id: $HOSTNAME" > "$cloud_data/meta-data"
+    
+    info "Starting DD installation..."
+    info "Image: $DD_IMAGE"
+    info "This may take several minutes..."
+    
+    if [[ "$DD_MODE" == "yes" ]]; then
+        /tmp/reinstall.sh dd --img "$DD_IMAGE" --cloud-data "$cloud_data" --force
+    else
+        /tmp/reinstall.sh "$OS" "$OS_VERSION" --cloud-data "$cloud_data" --force
+    fi
+    
+    info "$(t DONE_DESC "Installation started. Check your provider console for progress.")"
 }
 
 main "$@"
