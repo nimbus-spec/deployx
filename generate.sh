@@ -20,7 +20,9 @@ Usage: $0 [options]
 Options:
     --lang LANG       Language (en, zh) [default: en]
     --output FILE    Output file [default: stdout]
+    --execute        Execute installation after generating config
     -h, --help      Show this help
+    --version       Show version information
 EOF
 }
 
@@ -30,6 +32,7 @@ parse_args() {
             --lang) LANG="$2"; shift 2 ;;
             --output) OUTPUT_FILE="$2"; shift 2 ;;
             --execute) EXECUTE_MODE="yes"; shift ;;
+            --version) echo "$VERSION"; exit 0 ;;
             -h|--help) usage; exit 0 ;;
             *) shift ;;
         esac
