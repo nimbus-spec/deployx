@@ -1,10 +1,6 @@
 #!/bin/bash
 # generate.sh - DeployX Main Wizard
-# Usage: ./generate.sh [--lang LANG] [--dd]
-# 
-# This script guides users through VPS deployment configuration.
-# It auto-detects hardware, network, and location, then generates
-# cloud-init configurations for automated OS installation.
+# Usage: ./generate.sh [--lang LANG] [--dd] [--execute]
 
 set -euo pipefail
 
@@ -13,47 +9,50 @@ BIN_DIR="$SCRIPT_DIR/bin"
 LIB_DIR="$SCRIPT_DIR/lib"
 TPL_DIR="$SCRIPT_DIR/templates"
 
-source "$LIB_DIR/output.sh"
 source "$LIB_DIR/i18n.sh"
 
 LANG="${LANG:-en}"
-DD_MODE="${DD_MODE:-no}"
-
-show_usage() {
-    cat << EOF
-Usage: $0 [options]
-Options:
-    --lang LANG    Language (en, zh) [default: en]
-    --dd           Enable DD mode
-    -h, --help     Show this help
-EOF
-}
+DD_MODE="no"
+EXECUTE_MODE="no"
 
 parse_args() {
     while [[ $# -gt 0 ]]; do
-        case $1 in
+        case "$1" in
             --lang) LANG="$2"; shift 2 ;;
             --dd) DD_MODE="yes"; shift ;;
-            -h|--help) show_usage; exit 0 ;;
+            --execute) EXECUTE_MODE="yes"; shift ;;
             *) shift ;;
         esac
     done
 }
 
 init_i18n() {
-    i18n_load "$LANG" 2>/dev/null || {
-        echo "[WARN] Failed to load translations, using defaults"
-    }
+    source "$SCRIPT_DIR/translations/${LANG}.sh" 2>/dev/null || true
 }
 
 t() {
     local key="$1"
-    local default="${2:-}"
-    if [[ "${I18N_LOADED:-0}" -eq 1 ]] && [[ -n "${T[$key]:-}" ]]; then
-        echo "${T[$key]}"
+    local val="${T[$key]:-}"
+    if [[ -n "$val" ]]; then
+        echo "$val"
     else
-        echo "$default"
+        echo "$key"
     fi
+}
+
+header() {
+    echo ""
+    echo "========================================"
+    echo " $1"
+    echo "========================================"
+}
+
+info() {
+    echo "[INFO] $1"
+}
+
+error() {
+    echo "[ERROR] $1" >&2
 }
 
 select_language() {
@@ -63,7 +62,7 @@ select_language() {
     echo "========================================"
     echo ""
     echo "  1) English"
-    echo "  2) Chinese / Zhongwen"
+    echo "  2) Chinese"
     echo ""
     
     local valid=0
@@ -83,28 +82,20 @@ select_language() {
 }
 
 detect_hardware() {
-    info "Detecting hardware..."
-    
-    eval "$("$BIN_DIR/detect.sh")" 2>/dev/null || true
-    CPU_CORES="${CPU_CORES:-$(nproc 2>/dev/null || echo 2)}"
-    MEMORY_MB="${MEMORY_MB:-$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2/1024}' || echo 2048)}"
-    DISK_GB="${DISK_GB:-$(df -h / 2>/dev/null | tail -1 | awk '{print $2}' || echo "50G")}"
+    info "$(t DETECT_HW "Detecting hardware...")"
+    eval "$("$BIN_DIR/detect.sh" 2>/dev/null)" || true
 }
 
 detect_network() {
-    info "Detecting network..."
-    
-    eval "$("$BIN_DIR/network.sh")" 2>/dev/null || true
+    info "$(t DETECT_NET "Detecting network...")"
+    eval "$("$BIN_DIR/network.sh" 2>/dev/null)" || true
     INTERFACE="${INTERFACE:-eth0}"
     NET_TYPE="${NET_TYPE:-v4}"
-    PUBLIC_V4="${PUBLIC_V4:-}"
-    PRIVATE_V4="${PRIVATE_V4:-}"
 }
 
 detect_location() {
-    info "Detecting location..."
-    
-    eval "$("$BIN_DIR/location.sh")" 2>/dev/null || true
+    info "$(t DETECT_LOC "Detecting location...")"
+    eval "$("$BIN_DIR/location.sh" 2>/dev/null)" || true
     COUNTRY="${COUNTRY:-us}"
     CITY="${CITY:-unknown}"
     REGION="${REGION:-unknown}"
@@ -113,71 +104,74 @@ detect_location() {
 prompt_country() {
     echo ""
     echo "--- $(t COUNTRY "Country") ---"
-    echo "  Auto-detected: ${COUNTRY^^} (${CITY:-})"
+    echo "  $(t AUTO_DETECTED "Auto-detected"): ${COUNTRY^^} (${CITY})"
     echo ""
-    echo -n "Enter country code (e.g., us, jp, sg) [${COUNTRY}]: "
+    echo -n "$(t PROMPT_COUNTRY "Country code") [${COUNTRY}]: "
     read -r input
     COUNTRY="${input:-$COUNTRY}"
 }
 
 prompt_merchant() {
     echo ""
-    echo "--- $(t MERCHANT "Provider/Merchant") ---"
-    echo "  e.g., aws, digitalocean, vultr, hetzner"
+    echo "--- $(t MERCHANT "Provider") ---"
     echo ""
-    
-    local valid=0
-    while [[ $valid -eq 0 ]]; do
-        echo -n "Provider name: "
+    echo -n "$(t PROMPT_MERCHANT "Provider name"): "
+    read -r MERCHANT
+    while [[ -z "$MERCHANT" ]]; do
+        echo "$(t ERROR_NO_MERCHANT "Provider name is required")"
+        echo -n "Provider: "
         read -r MERCHANT
-        
-        if [[ -n "$MERCHANT" ]]; then
-            valid=1
-        else
-            echo "Provider name is required"
-        fi
     done
 }
 
 prompt_ssh_key() {
     echo ""
-    echo "--- $(t SSH_KEY "SSH public key") ---"
+    echo "--- $(t SSH_KEY "SSH Key") ---"
     echo ""
     
-    local valid=0
-    while [[ $valid -eq 0 ]]; do
-        echo -n "Paste SSH public key (ssh-rsa AAAA...): "
+    if [[ -f ~/.ssh/id_rsa.pub ]]; then
+        SSH_KEY=$(cat ~/.ssh/id_rsa.pub 2>/dev/null || echo "")
+    elif [[ -f ~/.ssh/id_ed25519.pub ]]; then
+        SSH_KEY=$(cat ~/.ssh/id_ed25519.pub 2>/dev/null || echo "")
+    fi
+    
+    if [[ -n "$SSH_KEY" ]]; then
+        echo "$(t INFO_SSH_KEY_LOADED "SSH key loaded from ~/.ssh/")"
+    else
+        echo "$(t INFO_SSH_KEY_MISSING "No SSH key found")"
+    fi
+    
+    echo ""
+    echo -n "$(t PROMPT_SSH_KEY "Paste SSH public key"): "
+    read -r SSH_KEY
+    while [[ -z "$SSH_KEY" ]]; do
+        echo "$(t ERROR_NO_SSH_KEY "SSH key is required")"
+        echo -n "SSH key: "
         read -r SSH_KEY
-        
-        if [[ -n "$SSH_KEY" ]]; then
-            valid=1
-        else
-            echo "SSH key is required"
-        fi
     done
 }
 
 prompt_ssh_port() {
     echo ""
-    echo "--- $(t SSH_PORT "SSH port") ---"
+    echo "--- $(t SSH_PORT "SSH Port") ---"
     echo ""
     echo -n "SSH port [22]: "
-    read -r input
-    SSH_PORT="${input:-22}"
+    read -r SSH_PORT
+    SSH_PORT="${SSH_PORT:-22}"
 }
 
 prompt_nomad_role() {
     echo ""
-    echo "--- $(t NOMAD_ROLE "Nomad role") ---"
-    echo "  1) None"
-    echo "  2) Server"
-    echo "  3) Client"
-    echo "  4) Server + Client"
+    echo "--- $(t NOMAD_ROLE "Nomad Role") ---"
+    echo "  1) $(t NOMAD_NONE "None")"
+    echo "  2) $(t NOMAD_SERVER "Server")"
+    echo "  3) $(t NOMAD_CLIENT "Client")"
+    echo "  4) $(t NOMAD_ALL "Server + Client")"
     echo ""
     
     local valid=0
     while [[ $valid -eq 0 ]]; do
-        echo -n "Select role [4]: "
+        echo -n "Select [4]: "
         read -r choice
         choice="${choice:-4}"
         
@@ -186,23 +180,21 @@ prompt_nomad_role() {
             2) NOMAD_ROLE="server"; valid=1 ;;
             3) NOMAD_ROLE="client"; valid=1 ;;
             4) NOMAD_ROLE="server+client"; valid=1 ;;
-            *) echo "Invalid selection" ;;
+            *) echo "Invalid" ;;
         esac
     done
 }
 
 prompt_tailscale() {
     echo ""
-    echo "--- $(t TAILSCALE "Configure Tailscale?") ---"
+    echo "--- $(t TAILSCALE "Tailscale") ---"
     echo ""
     echo -n "Configure Tailscale? (y/N): "
     read -r confirm
     
     if [[ "$confirm" =~ ^[Yy]$ ]]; then
         TAILSCALE_ENABLE="yes"
-        
-        echo ""
-        echo -n "Tailscale auth key (tskey-auth-xxx): "
+        echo -n "$(t TAILSCALE_KEY "Auth key"): "
         read -r TAILSCALE_KEY
     else
         TAILSCALE_ENABLE="no"
@@ -212,14 +204,14 @@ prompt_tailscale() {
 
 prompt_install_mode() {
     echo ""
-    echo "--- $(t INSTALL_MODE "Installation mode") ---"
-    echo "  1) DD mode (full disk image)"
-    echo "  2) Native mode (reinstall OS)"
+    echo "--- $(t INSTALL_MODE "Install Mode") ---"
+    echo "  1) DD $(t MODE_DD "Mode")"
+    echo "  2) $(t MODE_NATIVE "Native")"
     echo ""
     
     local valid=0
     while [[ $valid -eq 0 ]]; do
-        echo -n "Select mode [2]: "
+        echo -n "Select [2]: "
         read -r choice
         choice="${choice:-2}"
         
@@ -234,147 +226,105 @@ prompt_install_mode() {
                 prompt_os_select
                 valid=1
                 ;;
-            *) echo "Invalid selection" ;;
+            *) echo "Invalid" ;;
         esac
     done
 }
 
 prompt_dd_image() {
     echo ""
-    echo "--- $(t DD_IMAGE "DD image URL") ---"
+    echo "--- $(t DD_IMAGE "DD Image") ---"
     echo ""
-    echo -n "Disk image URL: "
+    echo -n "$(t PROMPT_DD_IMAGE "Image URL"): "
     read -r DD_IMAGE
 }
 
 prompt_os_select() {
-    local OS_LIST=("Debian" "Ubuntu" "Alpine" "Rocky" "CentOS" "Fedora")
-    
+    local os_list=("Debian" "Ubuntu" "Alpine" "Rocky" "CentOS")
     echo ""
-    echo "--- $(t OS_SELECT "Select operating system") ---"
-    for i in "${!OS_LIST[@]}"; do
-        echo "  $((i+1))) ${OS_LIST[$i]}"
+    echo "--- $(t OS_SELECT "OS Selection") ---"
+    for i in "${!os_list[@]}"; do
+        echo "  $((i+1))) ${os_list[$i]}"
     done
     echo ""
     
     local valid=0
     while [[ $valid -eq 0 ]]; do
-        echo -n "Select OS [1]: "
+        echo -n "Select [1]: "
         read -r choice
         choice="${choice:-1}"
         
-        if [[ "$choice" =~ ^[0-9]+$ ]] && [[ $choice -ge 1 ]] && [[ $choice -le ${#OS_LIST[@]} ]]; then
-            OS="${OS_LIST[$((choice-1))]}"
-            OS_LOWER=$(echo "$OS" | tr '[:upper:]' '[:lower:]')
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [[ $choice -ge 1 ]] && [[ $choice -le ${#os_list[@]} ]]; then
+            OS="${os_list[$((choice-1))]}"
             valid=1
-        else
-            echo "Invalid selection"
         fi
     done
     
-    prompt_os_version
-}
-
-prompt_os_version() {
-    local versions=()
-    
-    case "$OS_LOWER" in
-        debian)
-            versions=("12" "11" "10")
-            ;;
-        ubuntu)
-            versions=("24.04" "22.04" "20.04")
-            ;;
-        alpine)
-            versions=("3.19" "3.18" "3.17")
-            ;;
-        rocky)
-            versions=("9" "8")
-            ;;
-        centos)
-            versions=("9" "8" "7")
-            ;;
-        fedora)
-            versions=("40" "39" "38")
-            ;;
-    esac
-    
-    echo ""
-    echo "--- $(t OS_VERSION "Select version") ---"
-    for i in "${!versions[@]}"; do
-        echo "  $((i+1))) ${versions[$i]}"
-    done
-    echo ""
-    
-    local valid=0
-    while [[ $valid -eq 0 ]]; do
-        echo -n "Select version [1]: "
-        read -r choice
-        choice="${choice:-1}"
-        
-        if [[ "$choice" =~ ^[0-9]+$ ]] && [[ $choice -ge 1 ]] && [[ $choice -le ${#versions[@]} ]]; then
-            OS_VERSION="${versions[$((choice-1))]}"
-            valid=1
-        else
-            echo "Invalid selection"
-        fi
-    done
+    OS_VERSION="12"
 }
 
 generate_hostname() {
     local suffix
-    suffix=$(head /dev/urandom 2>/dev/null | tr -dc 'a-z0-9' | head -c 8 || echo "$(date +%s | md5sum | head -c 8)")
+    suffix=$(head /dev/urandom 2>/dev/null | tr -dc 'a-z0-9' | head -c 8 || echo "$(date +%s)")
     HOSTNAME="$("$BIN_DIR/hostname.sh" -c "$COUNTRY" -r "$REGION" -n "$NET_TYPE" -m "$MERCHANT" -s "$suffix")"
     HOSTNAME="${HOSTNAME#*=}"
 }
 
 generate_network_config() {
-    local net_config=""
-    
     if [[ -n "$PUBLIC_V4" ]]; then
         local ip="${PUBLIC_V4%%/*}"
         local cidr="${PUBLIC_V4#*/}"
         cidr="${cidr:-24}"
-        local gateway="${GATEWAY:-}"
-        
-        net_config="      addresses:
-        - ${ip}/${cidr}
-      gateway4: ${gateway}
-      nameservers:
-        addresses:
-          - 1.1.1.1
-          - 8.8.8.8"
-    elif [[ -n "$PRIVATE_V4" ]]; then
-        net_config="      dhcp4: true"
+        echo "      addresses:"
+        echo "        - ${ip}/${cidr}"
+        echo "      gateway4: ${GATEWAY:-}"
+        echo "      nameservers:"
+        echo "        addresses:"
+        echo "          - 1.1.1.1"
+        echo "          - 8.8.8.8"
     else
-        net_config="      dhcp4: true"
+        echo "      dhcp4: true"
     fi
-    
-    echo "$net_config"
 }
 
 generate_runcmd() {
-    local runcmd=""
-    
-    runcmd="  - echo 'Host *' > /etc/ssh/sshd_config.d/disable.conf
-  - echo '    StrictHostKeyChecking no' >> /etc/ssh/sshd_config.d/disable.conf
-  - systemctl restart sshd"
+    echo "  - echo 'Host *' > /etc/ssh/sshd_config.d/disable.conf"
+    echo "  - echo '    StrictHostKeyChecking no' >> /etc/ssh/sshd_config.d/disable.conf"
+    echo "  - systemctl restart sshd"
     
     if [[ "$NOMAD_ROLE" != "none" ]]; then
-        runcmd="$runcmd"$'\n'"$("$BIN_DIR/nomad.sh" -r "$NOMAD_ROLE" -n "$HOSTNAME" --runcmd 2>/dev/null || true)"
+        "$BIN_DIR/nomad.sh" -r "$NOMAD_ROLE" -n "$HOSTNAME" --runcmd 2>/dev/null || true
     fi
     
     if [[ "$TAILSCALE_ENABLE" == "yes" ]] && [[ -n "$TAILSCALE_KEY" ]]; then
-        runcmd="$runcmd"$'\n'"$("$BIN_DIR/tailscale.sh" -k "$TAILSCALE_KEY" -o runcmd 2>/dev/null || true)"
+        "$BIN_DIR/tailscale.sh" -k "$TAILSCALE_KEY" -o runcmd 2>/dev/null || true
     fi
+}
+
+generate_config() {
+    info "$(t GENERATING "Generating configuration...")"
     
-    echo "$runcmd"
+    local network_config
+    network_config=$(generate_network_config)
+    
+    local runcmd
+    runcmd=$(generate_runcmd)
+    
+    "$BIN_DIR/render.sh" \
+        -t "$TPL_DIR/user-data.tpl" \
+        -v "HOSTNAME=$HOSTNAME" \
+        -v "SSH_KEY=$SSH_KEY" \
+        -v "SSH_PORT=$SSH_PORT" \
+        -v "PASSWORD_HASH=" \
+        -v "NETWORK_CONFIG=$network_config" \
+        -v "RUNCMD=$runcmd" \
+        -v "NOMAD_ROLE=$NOMAD_ROLE"
 }
 
 show_summary() {
     echo ""
     echo "========================================"
-    echo " Configuration Summary"
+    echo " $(t CONFIRM "Configuration Summary")"
     echo "========================================"
     echo ""
     echo "  Hostname:   $HOSTNAME"
@@ -398,32 +348,33 @@ show_summary() {
     echo ""
 }
 
-generate_config() {
-    info "Generating configuration..."
+download_and_execute() {
+    local config_file="/tmp/user-data.$$"
+    generate_config > "$config_file"
     
-    local network_config
-    network_config=$(generate_network_config)
+    header "$(t INSTALL_START "Starting Installation...")"
     
-    local runcmd
-    runcmd=$(generate_runcmd)
+    info "Downloading reinstall script..."
+    curl -fsSL https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh -o /tmp/reinstall.sh
+    chmod +x /tmp/reinstall.sh
     
-    local user_data
-    user_data=$("$BIN_DIR/render.sh" \
-        -t "$TPL_DIR/user-data.tpl" \
-        -v "HOSTNAME=$HOSTNAME" \
-        -v "SSH_KEY=$SSH_KEY" \
-        -v "SSH_PORT=$SSH_PORT" \
-        -v "PASSWORD_HASH=" \
-        -v "NETWORK_CONFIG=$network_config" \
-        -v "RUNCMD=$runcmd" \
-        -v "NOMAD_ROLE=$NOMAD_ROLE")
+    info "Preparing cloud-init data..."
+    local cloud_data="/tmp/cloud-data.$$"
+    mkdir -p "$cloud_data"
+    cp "$config_file" "$cloud_data/user-data"
+    echo "instance-id: $HOSTNAME" > "$cloud_data/meta-data"
     
-    local meta_data
-    meta_data=$("$BIN_DIR/render.sh" \
-        -t "$TPL_DIR/meta-data.tpl" \
-        -v "HOSTNAME=$HOSTNAME")
+    info "Starting DD installation..."
+    info "Image: $DD_IMAGE"
+    info "This may take several minutes..."
     
-    echo "$user_data"
+    if [[ "$DD_MODE" == "yes" ]]; then
+        /tmp/reinstall.sh dd --img "$DD_IMAGE" --cloud-data "$cloud_data" --force
+    else
+        /tmp/reinstall.sh "$OS" "$OS_VERSION" --cloud-data "$cloud_data" --force
+    fi
+    
+    info "$(t DONE_DESC "Installation started. Check your provider console for progress.")"
 }
 
 main() {
@@ -445,24 +396,24 @@ main() {
     generate_hostname
     show_summary
     
-    echo -n "Continue with installation? (Y/n): "
+    echo -n "$(t PROMPT_CONFIRM "Continue?") (Y/n): "
     read -r confirm
     confirm="${confirm:-Y}"
     
     if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-        echo "Cancelled."
+        echo "$(t CANCELLED "Cancelled")"
         exit 0
     fi
     
-    local config
-    config=$(generate_config)
-    
-    echo ""
-    echo "========================================"
-    echo " Configuration Complete"
-    echo "========================================"
-    echo ""
-    echo "$config"
+    if [[ "$EXECUTE_MODE" == "yes" ]]; then
+        download_and_execute
+    else
+        generate_config
+        echo ""
+        echo "========================================"
+        echo " $(t DONE "Configuration Complete")"
+        echo "========================================"
+    fi
 }
 
 main "$@"
