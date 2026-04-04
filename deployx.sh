@@ -115,11 +115,36 @@ run_generate() {
     ./generate.sh "$@"
 }
 
+run_execute() {
+    echo ""
+    echo "[*] Starting DeployX Installation..."
+    echo ""
+    
+    cd "$TEMP_DIR"
+    ./generate.sh --execute "$@"
+}
+
 main() {
     setup_locale
     check_dependencies
     download_all
-    run_generate "$@"
+    
+    # Check if --execute flag is present
+    local execute_mode=no
+    local args=()
+    for arg in "$@"; do
+        if [[ "$arg" == "--execute" ]]; then
+            execute_mode=yes
+        else
+            args+=("$arg")
+        fi
+    done
+    
+    if [[ "$execute_mode" == "yes" ]]; then
+        run_execute "${args[@]}"
+    else
+        run_generate "$@"
+    fi
 }
 
 main "$@"
